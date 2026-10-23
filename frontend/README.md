@@ -4,6 +4,8 @@ React 19 + TypeScript (strict) on Vite, Material-UI, React Router. Auth state us
 
 ## Run locally
 
+Requires Node.js 24 (22.22 or newer also works); Vitest 5 and jsdom 30 do not run on Node 20.
+
 Start the backend first (see [../backend/README.md](../backend/README.md)), then:
 
 ```bash

@@ -42,7 +42,7 @@ docs/        Requirements, architecture, UML, threat model, API design
 
 ## Local development setup
 
-Prerequisites: Git, JDK 17+, Maven (or Gradle), Node.js 20+, Docker Desktop.
+Prerequisites: Git, JDK 17+, Maven (or Gradle), Node.js 24 LTS (22.22+ also works), Docker Desktop.
 
 ```bash
 git clone <repo-url>
