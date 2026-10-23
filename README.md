@@ -1,5 +1,7 @@
 # TraceGuard
 
+[![CI](https://github.com/Tridevvv/Traceguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Tridevvv/Traceguard/actions/workflows/ci.yml)
+
 **Secure supply chain verification using RFID.** Every scan of a product becomes a digitally signed event, linked to the previous one by a SHA-256 hash, forming a tamper-evident chain. A verification engine and anomaly detector return an `AUTHENTIC`, `SUSPECT` or `COUNTERFEIT` verdict with reasons.
 
 - Course: CS 5010 Programming Design Paradigm
