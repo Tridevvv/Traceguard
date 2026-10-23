@@ -25,7 +25,7 @@ Tick items as they are finished. Move to the next phase only when the current on
 - [x] Database integration; CRUD for organizations, products, batches
 - [x] Tag issuing; `Reader` interface and `SimulatedReader`
 - [x] Signed, hash-chained ledger (SHA-256, ECDSA)
-- [ ] GitHub Actions CI (build and test on every PR)
+- [x] GitHub Actions CI (build and test on every PR)
 
 ## Phase 3: Verification and Intelligence (Weeks 5-7)
 
