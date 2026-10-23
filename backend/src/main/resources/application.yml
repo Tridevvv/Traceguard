@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: traceguard
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+
+traceguard:
+  jwt:
+    # Required, at least 32 characters. Set TRACEGUARD_JWT_SECRET (the dev profile provides a local-only one).
+    secret: ${TRACEGUARD_JWT_SECRET:}
+    expiry-minutes: 60
+  keystore:
+    # Checkpoint private keys live here, outside the database. Never commit this folder.
+    dir: ${TRACEGUARD_KEYSTORE_DIR:./keystore}
+  bootstrap:
+    # If both are set and the user does not exist, an ADMIN is created at startup.
+    admin-email: ${TRACEGUARD_ADMIN_EMAIL:}
+    admin-password: ${TRACEGUARD_ADMIN_PASSWORD:}
