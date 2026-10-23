@@ -19,11 +19,12 @@ Tick items as they are finished. Move to the next phase only when the current on
 
 ## Phase 2: Development, Core Features (Weeks 3-4)
 
-- [ ] Spring Boot project skeleton (Web, Security, Data JPA) and React + TypeScript app
-- [ ] Authentication with JWT and role-based access control
-- [ ] Database integration; CRUD for organizations, products, batches
-- [ ] Tag issuing; `Reader` interface and `SimulatedReader`
-- [ ] Signed, hash-chained ledger (SHA-256, ECDSA)
+- [x] Spring Boot project skeleton (Web, Security, Data JPA)
+- [ ] React + TypeScript app
+- [x] Authentication with JWT and role-based access control
+- [x] Database integration; CRUD for organizations, products, batches
+- [x] Tag issuing; `Reader` interface and `SimulatedReader`
+- [x] Signed, hash-chained ledger (SHA-256, ECDSA)
 - [ ] GitHub Actions CI (build and test on every PR)
 
 ## Phase 3: Verification and Intelligence (Weeks 5-7)
