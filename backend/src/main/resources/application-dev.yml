@@ -1,0 +1,13 @@
+# Local development only: in-memory H2, no Docker needed. Run with -Dspring.profiles.active=dev
+spring:
+  datasource:
+    url: jdbc:h2:mem:traceguard;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+
+traceguard:
+  jwt:
+    secret: dev-only-secret-change-me-0123456789abcdef
+  bootstrap:
+    admin-email: admin@traceguard.local
+    admin-password: DevAdmin#2026

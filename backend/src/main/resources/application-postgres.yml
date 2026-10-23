@@ -1,0 +1,6 @@
+# Run with -Dspring.profiles.active=postgres (start the DB with `docker compose up -d` first).
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:traceguard}
+    username: ${POSTGRES_USER:traceguard}
+    password: ${POSTGRES_PASSWORD:change-me-locally}
