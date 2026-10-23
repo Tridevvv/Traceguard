@@ -13,7 +13,7 @@
 | # | Phase | Weeks | Status |
 |---|-------|-------|--------|
 | 1 | Planning and Design | 1-2 | In progress |
-| 2 | Development: Core Features | 3-4 | In progress (backend done, frontend pending) |
+| 2 | Development: Core Features | 3-4 | Done |
 | 3 | Development: Verification and Intelligence | 5-7 | Not started |
 | 4 | Testing and QA | 8-9 | Not started |
 | 5 | Deployment and Documentation | 10 | Not started |
@@ -42,7 +42,7 @@ docs/        Requirements, architecture, UML, threat model, API design
 
 ## Local development setup
 
-Prerequisites: Git, JDK 17+, Maven (or Gradle), Node.js 20+, Docker Desktop.
+Prerequisites: Git, JDK 17+, Maven (or Gradle), Node.js 24 LTS (22.22+ also works), Docker Desktop.
 
 ```bash
 git clone <repo-url>
