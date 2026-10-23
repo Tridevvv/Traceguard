@@ -11,7 +11,7 @@
 | # | Phase | Weeks | Status |
 |---|-------|-------|--------|
 | 1 | Planning and Design | 1-2 | In progress |
-| 2 | Development: Core Features | 3-4 | Not started |
+| 2 | Development: Core Features | 3-4 | In progress (backend done, frontend pending) |
 | 3 | Development: Verification and Intelligence | 5-7 | Not started |
 | 4 | Testing and QA | 8-9 | Not started |
 | 5 | Deployment and Documentation | 10 | Not started |
