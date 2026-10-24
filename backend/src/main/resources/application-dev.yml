@@ -11,3 +11,7 @@ traceguard:
   bootstrap:
     admin-email: admin@traceguard.local
     admin-password: DevAdmin#2026
+  demo:
+    # Loads sample organizations, checkpoints, a route policy and one tag per verdict scenario.
+    seed: true
+    password: DemoUser#2026

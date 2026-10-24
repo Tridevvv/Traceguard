@@ -63,11 +63,16 @@ signature = ECDSA_sign( checkpoint_private_key, hash )
 
 ## Verification flow
 
-1. Load all events for the tag in sequence order.
-2. For each event: recompute the hash, check `prev_hash` link, verify the signature with the checkpoint public key.
-3. Compare the checkpoint order with the route policy for the product type; check time limits between checkpoints.
-4. Run the anomaly detectors.
-5. Combine into a verdict: any broken hash or signature gives `COUNTERFEIT`; anomalies or route/timing violations give `SUSPECT`; otherwise `AUTHENTIC`. Each finding is a machine-readable reason code.
+`VerificationService` collects reasons from each check; the verdict is the worst impact among them (details and reason
+codes in [backend/README.md](../backend/README.md)).
+
+1. Tag lookup: unknown tag gives `UNREGISTERED_TAG` (COUNTERFEIT). Recalled batch gives `BATCH_RECALLED`. No scans gives `NO_HISTORY`.
+2. Ledger check: recompute every hash, link and signature; any failure is COUNTERFEIT.
+3. Route checker: compare checkpoint order, allowed locations and time limits with the product type's route policy.
+4. Anomaly detector: cloned tag, impossible travel, scan burst.
+5. If requested, raise one alert per finding (deduplicated while OPEN); HIGH alerts are also sent to the notifiers.
+
+Verification runs automatically after every scan, on `GET /api/verify/{tagId}` and on the public endpoint.
 
 ## Anomaly detectors (rule-based, Java)
 

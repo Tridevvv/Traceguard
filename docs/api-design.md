@@ -15,7 +15,8 @@ Base path `/api`. JSON over HTTPS. Auth: `Authorization: Bearer <JWT>` unless ma
 |--------|------|--------|
 | GET/POST | `/organizations` | ADMIN |
 | GET/POST | `/checkpoints` | ADMIN (GET: any staff role) |
-| GET/POST/PUT | `/route-policies` | ADMIN |
+| GET | `/route-policies` | any signed-in role |
+| POST, PUT `/{id}` | `/route-policies` | ADMIN (one policy per product type; steps are the approved checkpoint order) |
 
 ## Catalog (FR-3, FR-10)
 
@@ -39,8 +40,8 @@ There is intentionally no PUT or DELETE for events.
 
 | Method | Path | Access | Purpose |
 |--------|------|--------|---------|
-| GET | `/verify/{tagId}` | RETAILER, DISTRIBUTOR, MANUFACTURER, ADMIN, AUDITOR | Full verdict, reasons, timeline |
-| GET | `/public/verify/{tagId}` | public | Same verdict for consumers (rate limited) |
+| GET | `/verify/{tagId}` | any signed-in role | Full verdict, reasons, timeline; raises alerts |
+| GET | `/public/verify/{tagId}` | public | Same verdict for consumers; 60 requests/min per client (HTTP 429 above that); never raises alerts for unknown tag IDs |
 
 Verdict response:
 
@@ -61,15 +62,15 @@ Verdict response:
 
 | Method | Path | Access |
 |--------|------|--------|
-| GET | `/alerts?status=OPEN` | ADMIN, MANUFACTURER, AUDITOR |
-| PATCH | `/alerts/{id}` | ADMIN (acknowledge/resolve) |
-| GET | `/analytics/scan-volume`, `/analytics/verdicts`, `/analytics/alerts`, `/analytics/checkpoints` | staff, AUDITOR |
+| GET | `/alerts?status=OPEN` | ADMIN, AUDITOR (all); MANUFACTURER (own products only) |
+| PATCH | `/alerts/{id}` body `{"status":"ACKNOWLEDGED"\|"RESOLVED"}` | ADMIN, MANUFACTURER (own) |
+| GET (not built yet) | `/analytics/scan-volume`, `/analytics/verdicts`, `/analytics/alerts`, `/analytics/checkpoints` | staff, AUDITOR |
 
 ## Reports and audit (FR-13, FR-14)
 
 | Method | Path | Access |
 |--------|------|--------|
-| GET | `/reports/audit?format=pdf\|csv&from=&to=` | ADMIN, AUDITOR |
+| GET (not built yet) | `/reports/audit?format=pdf\|csv&from=&to=` | ADMIN, AUDITOR |
 | GET | `/audit-log` | ADMIN, AUDITOR |
 
 ## Error format

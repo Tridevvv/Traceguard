@@ -1,5 +1,7 @@
 package com.traceguard.ledger;
 
+import com.traceguard.alert.Alert.Severity;
+import com.traceguard.alert.AlertService;
 import com.traceguard.catalog.CatalogRepositories.TagRepository;
 import com.traceguard.common.Errors.BadRequestException;
 import com.traceguard.common.Errors.ConflictException;
@@ -27,28 +29,37 @@ import java.util.*;
 @Service
 public class LedgerService {
 
-    public record ChainReport(String tagId, boolean valid, int eventCount, List<String> problems) {}
+    /** One integrity problem. Codes: SEQUENCE_GAP, LINK_BROKEN, HASH_MISMATCH, SIGNATURE_INVALID. */
+    public record Issue(String code, int seq, String message) {}
+
+    public record ChainReport(String tagId, boolean valid, int eventCount, List<String> problems, List<Issue> issues) {}
 
     private final ScanEventRepository events;
     private final TagRepository tags;
     private final CheckpointRepository checkpoints;
     private final KeyService keys;
     private final SignatureService signatures;
+    private final AlertService alerts;
 
     public LedgerService(ScanEventRepository events, TagRepository tags, CheckpointRepository checkpoints,
-                         KeyService keys, SignatureService signatures) {
+                         KeyService keys, SignatureService signatures, AlertService alerts) {
         this.events = events;
         this.tags = tags;
         this.checkpoints = checkpoints;
         this.keys = keys;
         this.signatures = signatures;
+        this.alerts = alerts;
     }
 
     /** Appends one event to the tag's chain. {@code occurredAt} and {@code nonce} default to now / random. */
     @Transactional
     public ScanEvent append(String tagId, long checkpointId, ScanEvent.Type type, Instant occurredAt, String nonce) {
         if (!tags.existsById(tagId)) {
-            throw new NotFoundException("Tag " + tagId + " is not registered");
+            // Committed separately: the alert must survive the rollback caused by the exception below.
+            String shown = tagId.length() > 64 ? tagId.substring(0, 64) : tagId;
+            alerts.raiseIsolated(shown, "UNREGISTERED_TAG", Severity.HIGH,
+                    "A scan was received for tag " + shown + ", which was never issued by a manufacturer");
+            throw new NotFoundException("Tag " + shown + " is not registered");
         }
         Checkpoint cp = checkpoints.findById(checkpointId)
                 .orElseThrow(() -> new NotFoundException("Checkpoint " + checkpointId + " not found"));
@@ -80,32 +91,33 @@ public class LedgerService {
     @Transactional(readOnly = true)
     public ChainReport checkChain(String tagId) {
         List<ScanEvent> chain = events.findByTagIdOrderBySeqAsc(tagId);
-        List<String> problems = new ArrayList<>();
+        List<Issue> issues = new ArrayList<>();
         Map<Long, Checkpoint> cache = new HashMap<>();
         String expectedPrev = HashUtil.GENESIS_HASH;
         int expectedSeq = 1;
 
         for (ScanEvent e : chain) {
             if (e.getSeq() != expectedSeq) {
-                problems.add("Event " + e.getSeq() + ": expected sequence " + expectedSeq);
+                issues.add(new Issue("SEQUENCE_GAP", e.getSeq(), "expected sequence " + expectedSeq));
             }
             if (!e.getPrevHash().equals(expectedPrev)) {
-                problems.add("Event " + e.getSeq() + ": previous-hash link is broken");
+                issues.add(new Issue("LINK_BROKEN", e.getSeq(), "previous-hash link is broken"));
             }
             String recomputed = computeHash(e.getTagId(), e.getCheckpointId(), e.getEventType(),
                     e.getOccurredAt(), e.getSeq(), e.getNonce(), e.getPrevHash());
             if (!recomputed.equals(e.getHash())) {
-                problems.add("Event " + e.getSeq() + ": stored hash does not match its contents (tampered)");
+                issues.add(new Issue("HASH_MISMATCH", e.getSeq(), "stored hash does not match its contents (tampered)"));
             }
             Checkpoint cp = cache.computeIfAbsent(e.getCheckpointId(), id -> checkpoints.findById(id).orElse(null));
             if (cp == null || cp.getPublicKey() == null
                     || !signatures.verify(keys.publicKey(cp.getPublicKey()), e.getHash(), e.getSignature())) {
-                problems.add("Event " + e.getSeq() + ": signature is invalid");
+                issues.add(new Issue("SIGNATURE_INVALID", e.getSeq(), "signature is invalid"));
             }
             expectedPrev = e.getHash();
             expectedSeq = e.getSeq() + 1;
         }
-        return new ChainReport(tagId, problems.isEmpty(), chain.size(), problems);
+        List<String> problems = issues.stream().map(i -> "Event " + i.seq() + ": " + i.message()).toList();
+        return new ChainReport(tagId, issues.isEmpty(), chain.size(), problems, issues);
     }
 
     static String computeHash(String tagId, long checkpointId, ScanEvent.Type type, Instant at,
