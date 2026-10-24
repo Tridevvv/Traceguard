@@ -16,7 +16,8 @@ Base path `/api`. JSON over HTTPS. Auth: `Authorization: Bearer <JWT>` unless ma
 | GET/POST | `/organizations` | ADMIN |
 | GET/POST | `/checkpoints` | ADMIN (GET: any staff role) |
 | GET | `/route-policies` | any signed-in role |
-| POST, PUT `/{id}` | `/route-policies` | ADMIN (one policy per product type; steps are the approved checkpoint order) |
+| POST | `/route-policies` | ADMIN (one policy per product type; steps are the approved checkpoint order) |
+| PUT | `/route-policies/{id}` | ADMIN (replace steps and limits) |
 
 ## Catalog (FR-3, FR-10)
 
