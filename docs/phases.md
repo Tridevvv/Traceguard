@@ -29,9 +29,9 @@ Tick items as they are finished. Move to the next phase only when the current on
 
 ## Phase 3: Verification and Intelligence (Weeks 5-7)
 
-- [ ] Verification engine and route policies
-- [ ] Anomaly detection rules and alert system
-- [ ] Scan console and verification page
+- [x] Verification engine and route policies (backend)
+- [x] Anomaly detection rules and alert system (backend; alerts center UI still to do)
+- [ ] Scan console and verification page (UI: show verdict, reasons, timestamp field for demos)
 - [ ] Analytics dashboard and consumer verification page (QR)
 - [ ] Batch recall and audit report export (PDF/CSV)
 

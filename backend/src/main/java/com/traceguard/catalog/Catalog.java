@@ -9,7 +9,7 @@ public final class Catalog {
 
     private Catalog() {}
 
-    @Entity
+    @Entity(name = "Product")
     @Table(name = "products")
     public static class Product {
         @Id
@@ -39,7 +39,7 @@ public final class Catalog {
         public String getProductType() { return productType; }
     }
 
-    @Entity
+    @Entity(name = "Batch")
     @Table(name = "batches")
     public static class Batch {
         @Id
@@ -72,7 +72,7 @@ public final class Catalog {
         public void recall() { this.recalled = true; }
     }
 
-    @Entity
+    @Entity(name = "Tag")
     @Table(name = "tags")
     public static class Tag {
         @Id

@@ -9,8 +9,10 @@ cd backend
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
+In Windows PowerShell, quote the option: `mvn spring-boot:run "-Dspring-boot.run.profiles=dev"`.
+
 The `dev` profile uses an in-memory H2 database (data is lost on restart) and creates a local-only admin:
-`admin@traceguard.local` / `DevAdmin#2026`. Swagger UI: http://localhost:8080/swagger-ui.html
+`admin@traceguard.local` / `DevAdmin#2026`. It also loads demo data (see below). Swagger UI: http://localhost:8080/swagger-ui.html
 
 To use PostgreSQL instead, run `docker compose up -d` from the repo root, set `TRACEGUARD_JWT_SECRET` (32+ chars),
 `TRACEGUARD_ADMIN_EMAIL` and `TRACEGUARD_ADMIN_PASSWORD`, and start with the `postgres` profile.
@@ -40,6 +42,52 @@ mvn test
 | `ledger` | Signed, hash-chained, append-only events; chain check |
 | `crypto` | SHA-256, ECDSA signing, key store |
 | `audit` | Append-only log of user actions |
+| `policy` | Route policies: approved checkpoint order and time limits per product type |
+| `verify` | Verification engine (verdict + reasons), route checker, public rate limit |
+| `anomaly` | Rule-based detectors: cloned tag, impossible travel, scan burst |
+| `alert` | Alerts (deduplicated while open), log and optional SMTP notifications |
+| `demo` | Dev-only demo data seeder |
+
+## Verdicts and reasons
+
+`GET /api/verify/{tagId}` (signed in) and `GET /api/public/verify/{tagId}` (no login, 60 requests/minute per client)
+return `AUTHENTIC`, `SUSPECT` or `COUNTERFEIT` with machine-readable reasons and a timeline. The verdict is the worst
+impact among the reasons.
+
+| Reason code | Verdict | Meaning |
+|-------------|---------|---------|
+| `HASH_MISMATCH`, `LINK_BROKEN`, `SEQUENCE_GAP`, `SIGNATURE_INVALID` | COUNTERFEIT | Ledger edited, forged or incomplete |
+| `UNREGISTERED_TAG` | COUNTERFEIT | Tag ID was never issued |
+| `DUPLICATE_PRESENCE` | COUNTERFEIT | Same tag at two distant sites within 60 s (cloned) |
+| `IMPOSSIBLE_TRAVEL` | COUNTERFEIT | Speed between checkpoints above 900 km/h |
+| `ROUTE_DEVIATION` | SUSPECT | Approved step skipped, or product went backwards |
+| `UNAUTHORIZED_LOCATION` | SUSPECT | Scan at a checkpoint not on the route policy |
+| `TIMING_VIOLATION` | SUSPECT | Hop or whole journey slower than the policy limit, or timestamps out of order |
+| `SCAN_BURST` | SUSPECT | More than 5 scans of one tag within 60 s |
+| `BATCH_RECALLED` | SUSPECT | Manufacturer recalled the batch |
+| `NO_HISTORY` | SUSPECT | Tag issued but never scanned |
+| `NO_ROUTE_POLICY` | (info) | Route and timing were not checked |
+
+Thresholds are configurable under `traceguard.anomaly.*`. Every scan runs a verification straight away, so problems raise
+alerts immediately. Alerts are deduplicated while OPEN. HIGH alerts are logged and, if SMTP is configured
+(`spring.mail.host`, `spring.mail.port`, ...), emailed to admins and the product's manufacturer users.
+A public lookup of an unknown tag ID never raises an alert, so guessing IDs cannot flood the center.
+
+## Demo data (dev profile)
+
+Sign in as `admin@traceguard.local`, or as `manufacturer@`, `distributor@`, `retailer@` or `auditor@demo.local`
+(password `DemoUser#2026`). Verify these tags, with or without logging in:
+
+| Tag | Story | Verdict |
+|-----|-------|---------|
+| `TG-DEMO-GENUINE` | Boston, Albany, Chicago within all limits | AUTHENTIC |
+| `TG-DEMO-CLONED` | Boston and Chicago 40 s apart | COUNTERFEIT |
+| `TG-DEMO-FAST` | Boston to Albany in 2 minutes | COUNTERFEIT |
+| `TG-DEMO-TAMPERED` | Event edited in the database afterwards | COUNTERFEIT |
+| `TG-DEMO-DETOUR` | Warehouse step skipped | SUSPECT |
+| `TG-DEMO-LATE` | 100 h to reach the warehouse (limit 48 h) | SUSPECT |
+| `TG-DEMO-RECALLED` | Batch recalled | SUSPECT |
+| `TG-DEMO-NOHISTORY` | Never scanned | SUSPECT |
 
 ## Try it
 
@@ -52,5 +100,5 @@ mvn test
 
 - The "no UPDATE/DELETE on events" rule is enforced in code (immutable entity, repository without those methods).
   The PostgreSQL trigger in `database/schema.sql` is not applied yet because Hibernate creates the tables for now.
-  Switching to Flyway migrations, which can include the trigger, is a Phase 3 task.
+  Switching to Flyway migrations, which can include the trigger, is still to do.
 - `POST /api/scans` currently uses a staff JWT; checkpoint-credential authentication for real readers comes later.

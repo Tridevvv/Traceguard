@@ -17,6 +17,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -138,5 +139,71 @@ class ApiFlowTest {
         long productA = call(post("/api/products"), manA, "{\"name\":\"PA\",\"productType\":\"t\"}", 201).get("id").asLong();
 
         call(post("/api/products/%d/batches".formatted(productA)), manB, "{\"label\":\"hack\"}", 404);
+    }
+
+    @Test
+    void publicVerifyNeedsNoLoginAndReturnsVerdictWithReasons() throws Exception {
+        JsonNode v = call(get("/api/public/verify/TG-NOT-A-REAL-TAG"), null, null, 200);
+        assertEquals("COUNTERFEIT", v.get("verdict").asText());
+        assertEquals("UNREGISTERED_TAG", v.get("reasons").get(0).get("code").asText());
+    }
+
+    @Test
+    void routePolicyIsAdminOnlyAndUniquePerProductType() throws Exception {
+        String admin = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        long orgId = call(post("/api/organizations"), admin,
+                "{\"name\":\"P-%s\",\"type\":\"MANUFACTURER\"}".formatted(UUID.randomUUID()), 201).get("id").asLong();
+        long cp1 = call(post("/api/checkpoints"), admin,
+                "{\"organizationId\":%d,\"name\":\"A\",\"locationName\":\"X\",\"latitude\":1,\"longitude\":1}".formatted(orgId), 201).get("id").asLong();
+        long cp2 = call(post("/api/checkpoints"), admin,
+                "{\"organizationId\":%d,\"name\":\"B\",\"locationName\":\"Y\",\"latitude\":2,\"longitude\":2}".formatted(orgId), 201).get("id").asLong();
+        String type = "type-" + UUID.randomUUID();
+        String body = "{\"productType\":\"%s\",\"maxTotalHours\":72,\"steps\":[{\"checkpointId\":%d},{\"checkpointId\":%d,\"maxHoursFromPrevious\":24}]}"
+                .formatted(type, cp1, cp2);
+
+        call(post("/api/route-policies"), createUser(admin, "RETAILER", null), body, 403);
+        call(post("/api/route-policies"), admin, body, 201);
+        call(post("/api/route-policies"), admin, body, 409);
+        call(post("/api/route-policies"), admin,
+                "{\"productType\":\"dup-%s\",\"maxTotalHours\":72,\"steps\":[{\"checkpointId\":%d},{\"checkpointId\":%d}]}".formatted(UUID.randomUUID(), cp1, cp1), 400);
+    }
+
+    @Test
+    void clonedScanRaisesAlertVisibleOnlyToTheOwningManufacturer() throws Exception {
+        String admin = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        long orgA = call(post("/api/organizations"), admin,
+                "{\"name\":\"CA-%s\",\"type\":\"MANUFACTURER\"}".formatted(UUID.randomUUID()), 201).get("id").asLong();
+        long orgB = call(post("/api/organizations"), admin,
+                "{\"name\":\"CB-%s\",\"type\":\"MANUFACTURER\"}".formatted(UUID.randomUUID()), 201).get("id").asLong();
+        long boston = call(post("/api/checkpoints"), admin,
+                "{\"organizationId\":%d,\"name\":\"Boston\",\"locationName\":\"MA\",\"latitude\":42.36,\"longitude\":-71.06}".formatted(orgA), 201).get("id").asLong();
+        long chicago = call(post("/api/checkpoints"), admin,
+                "{\"organizationId\":%d,\"name\":\"Chicago\",\"locationName\":\"IL\",\"latitude\":41.88,\"longitude\":-87.63}".formatted(orgA), 201).get("id").asLong();
+        String manA = createUser(admin, "MANUFACTURER", orgA);
+        String manB = createUser(admin, "MANUFACTURER", orgB);
+
+        long product = call(post("/api/products"), manA, "{\"name\":\"P\",\"productType\":\"t-%s\"}".formatted(UUID.randomUUID()), 201).get("id").asLong();
+        long batch = call(post("/api/products/%d/batches".formatted(product)), manA, "{\"label\":\"B\"}", 201).get("id").asLong();
+        String tag = call(post("/api/batches/%d/tags?count=1".formatted(batch)), manA, null, 201).get("tagIds").get(0).asText();
+
+        // Boston, then Chicago a moment later: one tag in two places at once.
+        call(post("/api/scans/simulate"), manA, "{\"tagId\":\"%s\",\"checkpointId\":%d,\"eventType\":\"REGISTERED\"}".formatted(tag, boston), 201);
+        call(post("/api/scans/simulate"), manA, "{\"tagId\":\"%s\",\"checkpointId\":%d,\"eventType\":\"RECEIVED\"}".formatted(tag, chicago), 201);
+
+        JsonNode verdict = call(get("/api/verify/%s".formatted(tag)), manA, null, 200);
+        assertEquals("COUNTERFEIT", verdict.get("verdict").asText());
+
+        assertTrue(call(get("/api/alerts?status=OPEN"), manA, null, 200).toString().contains(tag));
+        assertTrue(!call(get("/api/alerts?status=OPEN"), manB, null, 200).toString().contains(tag));
+        assertTrue(call(get("/api/alerts?status=OPEN"), admin, null, 200).toString().contains(tag));
+        call(get("/api/alerts"), createUser(admin, "RETAILER", null), null, 403);
+
+        // The owner can resolve it; another manufacturer cannot even see it.
+        long alertId = null == verdict ? 0 : 0;
+        for (JsonNode a : call(get("/api/alerts?status=OPEN"), manA, null, 200)) {
+            if (a.get("tagId").asText().equals(tag)) { alertId = a.get("id").asLong(); break; }
+        }
+        call(patch("/api/alerts/%d".formatted(alertId)), manB, "{\"status\":\"RESOLVED\"}", 404);
+        assertEquals("RESOLVED", call(patch("/api/alerts/%d".formatted(alertId)), manA, "{\"status\":\"RESOLVED\"}", 200).get("status").asText());
     }
 }
