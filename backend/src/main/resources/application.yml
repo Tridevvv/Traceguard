@@ -18,3 +18,15 @@ traceguard:
     # If both are set and the user does not exist, an ADMIN is created at startup.
     admin-email: ${TRACEGUARD_ADMIN_EMAIL:}
     admin-password: ${TRACEGUARD_ADMIN_PASSWORD:}
+  public:
+    # Unauthenticated /api/public/* requests allowed per client address per minute.
+    rate-limit-per-minute: 60
+  mail:
+    # Sender of alert emails. Email is sent only if spring.mail.host (SMTP) is configured.
+    from: ${TRACEGUARD_MAIL_FROM:traceguard@localhost}
+  anomaly:
+    max-speed-kmh: 900
+    duplicate-window-seconds: 60
+    duplicate-min-km: 1
+    burst-window-seconds: 60
+    burst-max-scans: 5

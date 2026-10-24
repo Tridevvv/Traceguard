@@ -12,3 +12,5 @@ traceguard:
   bootstrap:
     admin-email: admin@test.local
     admin-password: TestAdmin#2026
+  public:
+    rate-limit-per-minute: 1000
