@@ -21,6 +21,11 @@ public final class CatalogRepositories {
         @Query("select p.organizationId from Product p join Batch b on b.productId = p.id "
                 + "join Tag t on t.batchId = b.id where t.tagId = :tagId")
         Optional<Long> organizationOfTag(@Param("tagId") String tagId);
+
+        /** Every tag ID that belongs to a product of the organization (used to scope analytics for a manufacturer). */
+        @Query("select t.tagId from Product p join Batch b on b.productId = p.id "
+                + "join Tag t on t.batchId = b.id where p.organizationId = :orgId")
+        List<String> tagIdsOfOrganization(@Param("orgId") Long orgId);
     }
 
     public interface BatchRepository extends JpaRepository<Batch, Long> {

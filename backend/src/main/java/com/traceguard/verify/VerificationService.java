@@ -2,6 +2,8 @@ package com.traceguard.verify;
 
 import com.traceguard.alert.Alert.Severity;
 import com.traceguard.alert.AlertService;
+import com.traceguard.analytics.VerificationRecord;
+import com.traceguard.analytics.VerificationRecordRepository;
 import com.traceguard.anomaly.AnomalyDetector;
 import com.traceguard.catalog.Catalog.Batch;
 import com.traceguard.catalog.Catalog.Product;
@@ -43,10 +45,12 @@ public class VerificationService {
     private final RouteChecker routeChecker;
     private final AnomalyDetector anomalies;
     private final AlertService alerts;
+    private final VerificationRecordRepository records;
 
     public VerificationService(TagRepository tags, BatchRepository batches, ProductRepository products,
                                RoutePolicyRepository policies, CheckpointRepository checkpoints, LedgerService ledger,
-                               RouteChecker routeChecker, AnomalyDetector anomalies, AlertService alerts) {
+                               RouteChecker routeChecker, AnomalyDetector anomalies, AlertService alerts,
+                               VerificationRecordRepository records) {
         this.tags = tags;
         this.batches = batches;
         this.products = products;
@@ -56,6 +60,7 @@ public class VerificationService {
         this.routeChecker = routeChecker;
         this.anomalies = anomalies;
         this.alerts = alerts;
+        this.records = records;
     }
 
     /**
@@ -104,6 +109,7 @@ public class VerificationService {
         Result result = reasons.stream().map(Reason::impact).filter(Objects::nonNull)
                 .max(Comparator.naturalOrder()).orElse(Result.AUTHENTIC);
 
+        remember(tagId, result);
         if (raiseAlerts) {
             reasons.stream().filter(r -> r.impact() != null).forEach(r -> raise(tagId, r));
         }
@@ -114,6 +120,15 @@ public class VerificationService {
                     c != null ? c.getLocationName() : "", e.getOccurredAt());
         }).toList();
         return new Verdict(tagId, result, reasons, timeline, Instant.now());
+    }
+
+    /** Stores the outcome for analytics, skipping a repeat of the same verdict seen within the last minute. */
+    private void remember(String tagId, Result result) {
+        Instant now = Instant.now();
+        boolean repeat = records.findFirstByTagIdOrderByIdDesc(tagId)
+                .filter(r -> r.getVerdict() == result && r.getCreatedAt().isAfter(now.minusSeconds(60)))
+                .isPresent();
+        if (!repeat) records.save(new VerificationRecord(tagId, result, now));
     }
 
     private void raise(String tagId, Reason r) {

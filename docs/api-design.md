@@ -65,13 +65,14 @@ Verdict response:
 |--------|------|--------|
 | GET | `/alerts?status=OPEN` | ADMIN, AUDITOR (all); MANUFACTURER (own products only) |
 | PATCH | `/alerts/{id}` body `{"status":"ACKNOWLEDGED"\|"RESOLVED"}` | ADMIN, MANUFACTURER (own) |
-| GET (not built yet) | `/analytics/scan-volume`, `/analytics/verdicts`, `/analytics/alerts`, `/analytics/checkpoints` | staff, AUDITOR |
+| GET | `/analytics/summary`, `/analytics/scan-volume?days=`, `/analytics/verdicts?days=`, `/analytics/alerts?days=`, `/analytics/checkpoints?days=` | ADMIN, AUDITOR (all); MANUFACTURER (own products only) |
 
 ## Reports and audit (FR-13, FR-14)
 
 | Method | Path | Access |
 |--------|------|--------|
-| GET (not built yet) | `/reports/audit?format=pdf\|csv&from=&to=` | ADMIN, AUDITOR |
+| GET | `/reports/audit?type=actions\|alerts\|events&format=csv\|pdf&from=&to=` (UTC dates, max 366 days, max 10,000 rows) | ADMIN, AUDITOR |
+| GET | `/reports/tags/{tagId}?format=csv\|pdf` (product history: verdict, reasons, timeline) | ADMIN, AUDITOR, MANUFACTURER (own) |
 | GET | `/audit-log` | ADMIN, AUDITOR |
 
 ## Error format

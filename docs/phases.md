@@ -32,8 +32,8 @@ Tick items as they are finished. Move to the next phase only when the current on
 - [x] Verification engine and route policies (backend)
 - [x] Anomaly detection rules and alert system (backend; alerts center UI still to do)
 - [ ] Scan console and verification page (UI: show verdict, reasons, timestamp field for demos)
-- [ ] Analytics dashboard and consumer verification page (QR)
-- [ ] Batch recall and audit report export (PDF/CSV)
+- [ ] Analytics dashboard and consumer verification page (QR) (analytics API and public verify API done; UI pending)
+- [x] Batch recall and audit report export (PDF/CSV) (API; download buttons in UI pending)
 
 ## Phase 4: Testing and QA (Weeks 8-9)
 

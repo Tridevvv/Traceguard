@@ -2,6 +2,9 @@ package com.traceguard.ledger;
 
 import org.springframework.data.repository.Repository;
 
+import org.springframework.data.domain.Pageable;
+
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,4 +18,8 @@ public interface ScanEventRepository extends Repository<ScanEvent, Long> {
     Optional<ScanEvent> findFirstByTagIdOrderBySeqDesc(String tagId);
 
     boolean existsByTagIdAndNonce(String tagId, String nonce);
+
+    List<ScanEvent> findByOccurredAtGreaterThanEqualAndOccurredAtLessThan(Instant from, Instant to);
+
+    List<ScanEvent> findByOccurredAtGreaterThanEqualAndOccurredAtLessThanOrderByIdAsc(Instant from, Instant to, Pageable page);
 }
