@@ -46,6 +46,8 @@ mvn test
 | `verify` | Verification engine (verdict + reasons), route checker, public rate limit |
 | `anomaly` | Rule-based detectors: cloned tag, impossible travel, scan burst |
 | `alert` | Alerts (deduplicated while open), log and optional SMTP notifications |
+| `analytics` | Dashboard aggregates (scan volume, verdicts, alerts, checkpoint activity) and verification history |
+| `report` | CSV and PDF exports: user activity, alerts, ledger, product history |
 | `demo` | Dev-only demo data seeder |
 
 ## Verdicts and reasons
@@ -72,6 +74,16 @@ Thresholds are configurable under `traceguard.anomaly.*`. Every scan runs a veri
 alerts immediately. Alerts are deduplicated while OPEN. HIGH alerts are logged and, if SMTP is configured
 (`spring.mail.host`, `spring.mail.port`, ...), emailed to admins and the product's manufacturer users.
 A public lookup of an unknown tag ID never raises an alert, so guessing IDs cannot flood the center.
+
+## Analytics and reports
+
+- `GET /api/analytics/summary`, `/scan-volume`, `/verdicts`, `/alerts`, `/checkpoints` (`?days=1..365`, default 30; UTC days,
+  zero-filled). Admins and auditors see everything, a manufacturer only its own products' tags; distributors and retailers
+  have no access.
+- `GET /api/reports/audit?type=actions|alerts|events&format=csv|pdf&from=YYYY-MM-DD&to=YYYY-MM-DD` (admins and auditors;
+  default last 30 days; at most 366 days and 10,000 rows) and `GET /api/reports/tags/{tagId}?format=csv|pdf` (product
+  history; a manufacturer only for its own tags). CSV cells that start with `= + - @` are prefixed with `'` so spreadsheets
+  never run them as formulas.
 
 ## Demo data (dev profile)
 
