@@ -52,7 +52,10 @@ class AnalyticsServiceTest {
     @Autowired TagRepository tags;
     @Autowired KeyService keys;
 
+    // Scans are anchored inside UTC days so the per-day counts do not depend on the time the tests run.
     final Instant now = Instant.now();
+    final Instant todayStart = today().atStartOfDay(ZoneOffset.UTC).toInstant();
+    final Instant earlierToday = todayStart.plus(Duration.between(todayStart, now).dividedBy(2));
     Organization org;
     long boston, albany, chicago;
     Batch batch;
@@ -69,12 +72,12 @@ class AnalyticsServiceTest {
         batch = batches.save(new Batch(p.getId(), "B-1"));
 
         genuine = tag();
-        ledger.append(genuine, boston, Type.REGISTERED, now.minus(Duration.ofDays(2)), null);
-        ledger.append(genuine, albany, Type.RECEIVED, now.minus(Duration.ofDays(2)).plus(Duration.ofHours(1)), null);
+        ledger.append(genuine, boston, Type.REGISTERED, todayStart.minus(Duration.ofDays(2)).plus(Duration.ofHours(10)), null);
+        ledger.append(genuine, albany, Type.RECEIVED, todayStart.minus(Duration.ofDays(2)).plus(Duration.ofHours(11)), null);
 
         cloned = tag();
-        ledger.append(cloned, boston, Type.REGISTERED, now.minus(Duration.ofMinutes(10)), null);
-        ledger.append(cloned, chicago, Type.RECEIVED, now.minus(Duration.ofMinutes(10)).plusSeconds(30), null);
+        ledger.append(cloned, boston, Type.REGISTERED, earlierToday, null);
+        ledger.append(cloned, chicago, Type.RECEIVED, earlierToday.plusSeconds(30), null);
 
         untouched = tag();
         mine = new Scope(Set.of(genuine, cloned, untouched));

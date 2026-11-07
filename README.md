@@ -109,7 +109,7 @@ If you scan one tag at two far-apart checkpoints within a minute, the engine cor
 
 ## Testing So Far
 
-- **Backend:** JUnit 5 with Spring Boot Test and MockMvc. **69 tests in 9 classes, all passing.**
+- **Backend:** JUnit 5 with Spring Boot Test and MockMvc. **69 tests in 8 classes, all passing.**
   - **Ledger:** linking, tamper detection, forged signatures, replay rejection.
   - **Route checker and anomaly detectors:** pure unit tests.
   - **Verification engine:** every verdict scenario.
