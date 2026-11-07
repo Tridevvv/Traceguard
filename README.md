@@ -9,7 +9,7 @@ TraceGuard is a web application that tracks products from manufacturer to consum
 | Member | GitHub Username | Role |
 |---|---|---|
 | Tridev Prabhu | [@Tridevvv](https://github.com/Tridevvv) | Backend (Spring Boot API, ledger, verification engine, analytics and reports), frontend skeleton, CI |
-| Sanjay Gokulakrishanan | SANJAY_GITHUB_USERNAME | Team member |
+| Sanjay Gokulakrishanan | SANJAY_GITHUB_USERNAME | Frontend (verification page), Phase 1 SRS document |
 
 ## Repository Structure
 
@@ -88,9 +88,9 @@ These passwords exist only in the local dev profile. Outside `dev`, set `TRACEGU
 | FR-3: Register products and batches; generate tag IDs and QR codes | Partial | Products, batches and unique tag IDs work in UI and API; printing QR labels is not built yet |
 | FR-4: Accept scans and create signed, hash-linked events | Complete | Simulated reader behind a `Reader` interface; ECDSA (P-256) signature per checkpoint |
 | FR-5: Append-only ledger with no update or delete | Complete | No update/delete in the API or repository, and the entity is immutable; the matching PostgreSQL trigger is drafted in `database/schema.sql` |
-| FR-6: Verify signatures, hash chain, route order and timing | Complete | `GET /api/verify/{tagId}`; the UI Verify page still shows only the chain check |
+| FR-6: Verify signatures, hash chain, route order and timing | Complete | `GET /api/verify/{tagId}`; the UI Verify page shows the full verdict |
 | FR-7: Detect anomalies | Complete | Cloned tag, impossible travel, unregistered tag, unauthorized location, scan burst; thresholds configurable |
-| FR-8: AUTHENTIC / SUSPECT / COUNTERFEIT verdict with reasons | Complete | 14 reason codes, each with a message; shown in the API, UI display is Phase 3 |
+| FR-8: AUTHENTIC / SUSPECT / COUNTERFEIT verdict with reasons | Complete | 14 reason codes, each with a message; shown in the API and on the Verify page (colored verdict badge, reasons sorted worst first) |
 | FR-9: Raise, display and manage alerts; email on high severity | Partial | Alerts are raised, deduplicated, scoped by role and can be resolved through the API; email works when SMTP is configured; alerts center UI not built yet |
 | FR-10: Flag or recall all products in a batch | Complete | Recall button in the Product Registry; recalled tags verify as SUSPECT |
 | FR-11: Public consumer verification by tag ID or QR code | Partial | Public, rate-limited `GET /api/public/verify/{tagId}` works without login; public page and QR scanning not built yet |
@@ -102,7 +102,7 @@ These passwords exist only in the local dev profile. Outside `dev`, set `TRACEGU
 
 1. Sign in as `manufacturer@demo.local`. Under **Product Registry**, create a product, open its batches, add a batch and issue tags. Copy one tag ID.
 2. Under **Scan Console**, scan the tag at **Factory** (REGISTERED), then at **Warehouse** (RECEIVED). Each scan becomes a signed event, and the timeline shows each event's hash linked to the previous one.
-3. Under **Verify a Tag**, check the tag. It shows **CHAIN INTACT**, with the full timeline.
+3. Under **Verify a Tag**, check the tag. It shows the verdict badge (**AUTHENTIC**, **SUSPECT** or **COUNTERFEIT**) with each reason, followed by the ledger timeline with hashes. Try `TG-DEMO-CLONED` here too.
 4. Open http://localhost:8080/api/public/verify/TG-DEMO-CLONED with no login. It returns `COUNTERFEIT` with the reason `DUPLICATE_PRESENCE`: the same tag was seen in Boston and Chicago 40 seconds apart. The other demo tags show the remaining verdicts: `TG-DEMO-GENUINE`, `TG-DEMO-FAST`, `TG-DEMO-TAMPERED`, `TG-DEMO-DETOUR`, `TG-DEMO-LATE`, `TG-DEMO-RECALLED` and `TG-DEMO-NOHISTORY`.
 
 If you scan one tag at two far-apart checkpoints within a minute, the engine correctly flags it as cloned. That is the anomaly detector working as intended.
@@ -115,13 +115,12 @@ If you scan one tag at two far-apart checkpoints within a minute, the engine cor
   - **Verification engine:** every verdict scenario.
   - **Analytics and report exporters:** including CSV formula-injection protection and valid PDF output.
   - **REST API and roles:** 401 and 403 rules, manufacturer data isolation, the public endpoint rate limit, and a full supply-chain flow.
-- **Frontend:** Vitest with React Testing Library. **8 tests, all passing:** JWT decoding, role-based routing and menus, and the login form.
+- **Frontend:** Vitest with React Testing Library. **14 tests, all passing:** JWT decoding, role-based routing and menus, the login form, and the Verify page (each verdict, reason ordering, error handling, and the tag search form).
 - **CI:** GitHub Actions runs both suites on every pull request and on every push to `main`.
 
 ## Next Steps (Phase 3)
 
 - Frontend for the Phase 3 backend:
-  - verdict view with reasons
   - alerts center
   - analytics dashboard charts
   - report download buttons
@@ -137,4 +136,4 @@ If you scan one tag at two far-apart checkpoints within a minute, the engine cor
 | Member | Contributions This Phase |
 |---|---|
 | Tridev Prabhu | **Design:** Phase 1 documents (requirements, architecture with NIST mapping, UML, database schema, API design, threat model).<br>**Backend:** project setup; JWT authentication and RBAC (`auth`); organizations and checkpoints (`org`); products, batches, tags and recall (`catalog`); signed, hash-chained ledger and key store (`ledger`, `crypto`); simulated reader (`reader`); route policies, verification engine and anomaly detectors (`policy`, `verify`, `anomaly`); alerts and notifications (`alert`); analytics and CSV/PDF reports (`analytics`, `report`); audit log (`audit`); demo data seeder.<br>**Frontend:** skeleton (login, role-based menu and routes, Product Registry, Scan Console, Verify, Admin pages).<br>**Infrastructure and tests:** GitHub Actions CI; all 69 backend and 8 frontend tests. |
-| Sanjay Gokulakrishanan | No code contributions in this phase. |
+| Sanjay Gokulakrishanan | **Design:** Phase 1 SRS document (problem statement, scope, roles, threat model, timeline).<br>**Frontend:** verdict view on the Verify page: calls `GET /api/verify/{tagId}`, shows an AUTHENTIC / SUSPECT / COUNTERFEIT badge with every reason sorted worst first, and keeps the ledger timeline as extra detail that never hides the verdict (`VerdictPanel`, `Verify`, verdict types).<br>**Tests:** 6 Vitest tests for the Verify page.<br>**Docs:** README and phase checklist updates. |
