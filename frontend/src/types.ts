@@ -49,9 +49,29 @@ export interface ScanEventView {
   hash: string
 }
 
-export interface ChainReport {
+/** Overall result of GET /api/verify/{tagId}, ordered from best to worst. */
+export type VerdictResult = 'AUTHENTIC' | 'SUSPECT' | 'COUNTERFEIT'
+
+/** One finding from the verification engine. impact null means informational: it never changes the verdict. */
+export interface VerdictReason {
+  code: string
+  impact: VerdictResult | null
+  message: string
+  eventSeq: number | null
+}
+
+export interface VerdictTimelineEntry {
+  seq: number
+  eventType: EventType
+  checkpointName: string
+  locationName: string
+  occurredAt: string
+}
+
+export interface Verdict {
   tagId: string
-  valid: boolean
-  eventCount: number
-  problems: string[]
+  verdict: VerdictResult
+  reasons: VerdictReason[]
+  timeline: VerdictTimelineEntry[]
+  verifiedAt: string
 }
