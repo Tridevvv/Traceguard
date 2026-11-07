@@ -9,7 +9,7 @@ TraceGuard is a web application that tracks products from manufacturer to consum
 | Member | GitHub Username | Role |
 |---|---|---|
 | Tridev Prabhu | [@Tridevvv](https://github.com/Tridevvv) | Backend (Spring Boot API, ledger, verification engine, analytics and reports), frontend skeleton, CI |
-| Sanjay Gokulakrishanan | SANJAY_GITHUB_USERNAME | Frontend (verification page), Phase 1 SRS document |
+| Sanjay Gokulakrishanan | [@sanjusanjay23](https://github.com/sanjusanjay23) | Frontend (verification page), Phase 1 SRS document |
 
 ## Repository Structure
 
