@@ -11,6 +11,7 @@ import { Login } from './pages/Login'
 import { Products } from './pages/Products'
 import { PublicCheck } from './pages/PublicCheck'
 import { QrLabels } from './pages/QrLabels'
+import { Reports } from './pages/Reports'
 import { ScanConsole } from './pages/ScanConsole'
 import { Verify } from './pages/Verify'
 import type { ReactElement } from 'react'
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="admin" element={guard('/admin', <Admin />)} />
         <Route path="alerts" element={guard('/alerts', <Alerts />)} />
         <Route path="analytics" element={guard('/analytics', <Analytics />)} />
+        <Route path="reports" element={guard('/reports', <Reports />)} />
         {/* Labels are printed from the Product Registry, so they share its roles. */}
         <Route path="labels/:batchId" element={guard('/products', <QrLabels />)} />
         {/* Verify is reachable signed-out; the page offers sign-in or the public check. */}

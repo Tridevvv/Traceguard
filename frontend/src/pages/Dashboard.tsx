@@ -11,7 +11,7 @@ export function Dashboard() {
     <>
       <Typography variant="h4" sx={{ fontWeight: 700 }} gutterBottom>Welcome</Typography>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Signed in as {user.email} ({user.role}). Analytics and alerts arrive in Phase 3.
+        Signed in as {user.email} ({user.role}). Choose what you want to do.
       </Typography>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
         {navFor(user.role).map((n) => (

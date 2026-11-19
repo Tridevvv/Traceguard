@@ -40,6 +40,12 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['ADMIN', 'MANUFACTURER', 'AUDITOR'],
   },
   {
+    label: 'Reports',
+    path: '/reports',
+    description: 'Download audit reports and product histories as CSV or PDF.',
+    roles: ['ADMIN', 'MANUFACTURER', 'AUDITOR'],
+  },
+  {
     label: 'Admin Panel',
     path: '/admin',
     description: 'Manage organizations, checkpoints and users.',
