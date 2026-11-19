@@ -88,3 +88,58 @@ export interface RoutePolicy {
   maxTotalHours: number
   steps: RouteStep[]
 }
+
+export type AlertSeverity = 'LOW' | 'MEDIUM' | 'HIGH'
+export type AlertStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'
+
+/** One alert from GET /api/alerts; code is a verdict reason code such as DUPLICATE_PRESENCE. */
+export interface AlertItem {
+  id: number
+  tagId: string
+  code: string
+  severity: AlertSeverity
+  status: AlertStatus
+  message: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** Shapes returned by /api/analytics/*. Dates are UTC days (YYYY-MM-DD), oldest first and zero-filled. */
+export interface DailyCount {
+  date: string
+  count: number
+}
+
+export interface NameCount {
+  name: string
+  count: number
+}
+
+export interface VerdictCounts {
+  authentic: number
+  suspect: number
+  counterfeit: number
+  unverified: number
+}
+
+export interface AnalyticsSummary {
+  tagsIssued: number
+  scansLast24Hours: number
+  scansLast7Days: number
+  openAlerts: number
+  verdicts: VerdictCounts
+}
+
+export interface AlertsReport {
+  open: number
+  byCode: NameCount[]
+  bySeverity: NameCount[]
+  daily: DailyCount[]
+}
+
+export interface CheckpointActivity {
+  checkpointId: number
+  name: string
+  locationName: string
+  scans: number
+}
