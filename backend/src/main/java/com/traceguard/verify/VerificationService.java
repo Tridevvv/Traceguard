@@ -1,10 +1,5 @@
 package com.traceguard.verify;
 
-import com.traceguard.alert.Alert.Severity;
-import com.traceguard.alert.AlertService;
-import com.traceguard.analytics.VerificationRecord;
-import com.traceguard.analytics.VerificationRecordRepository;
-import com.traceguard.anomaly.AnomalyDetector;
 import com.traceguard.catalog.Catalog.Batch;
 import com.traceguard.catalog.Catalog.Product;
 import com.traceguard.catalog.Catalog.Tag;
@@ -16,12 +11,12 @@ import com.traceguard.common.Verdicts.Result;
 import com.traceguard.common.Verdicts.TimelineEntry;
 import com.traceguard.common.Verdicts.Verdict;
 import com.traceguard.ledger.LedgerService;
-import com.traceguard.ledger.LedgerService.ChainReport;
 import com.traceguard.ledger.ScanEvent;
 import com.traceguard.org.Checkpoint;
 import com.traceguard.org.OrgRepositories.CheckpointRepository;
 import com.traceguard.policy.RoutePolicy;
 import com.traceguard.policy.RoutePolicyRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,8 +25,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Decides AUTHENTIC / SUSPECT / COUNTERFEIT for a tag. Every check adds machine-readable reasons;
- * the verdict is the worst impact among them.
+ * Decides AUTHENTIC / SUSPECT / COUNTERFEIT for a tag. It loads the tag's data once, runs every
+ * {@link VerificationCheck} bean, and takes the worst impact among their reasons as the verdict.
+ * The outcome is then published as a {@link VerdictIssued} event for the alert center and analytics.
  */
 @Service
 public class VerificationService {
@@ -42,25 +38,20 @@ public class VerificationService {
     private final RoutePolicyRepository policies;
     private final CheckpointRepository checkpoints;
     private final LedgerService ledger;
-    private final RouteChecker routeChecker;
-    private final AnomalyDetector anomalies;
-    private final AlertService alerts;
-    private final VerificationRecordRepository records;
+    private final List<VerificationCheck> checks;
+    private final ApplicationEventPublisher events;
 
     public VerificationService(TagRepository tags, BatchRepository batches, ProductRepository products,
                                RoutePolicyRepository policies, CheckpointRepository checkpoints, LedgerService ledger,
-                               RouteChecker routeChecker, AnomalyDetector anomalies, AlertService alerts,
-                               VerificationRecordRepository records) {
+                               List<VerificationCheck> checks, ApplicationEventPublisher events) {
         this.tags = tags;
         this.batches = batches;
         this.products = products;
         this.policies = policies;
         this.checkpoints = checkpoints;
         this.ledger = ledger;
-        this.routeChecker = routeChecker;
-        this.anomalies = anomalies;
-        this.alerts = alerts;
-        this.records = records;
+        this.checks = checks;
+        this.events = events;
     }
 
     /**
@@ -70,69 +61,42 @@ public class VerificationService {
      */
     @Transactional
     public Verdict verify(String tagId, boolean raiseAlerts, boolean alertOnUnregistered) {
-        List<Reason> reasons = new ArrayList<>();
-
         Optional<Tag> tag = tags.findById(tagId);
         if (tag.isEmpty()) {
             Reason r = new Reason("UNREGISTERED_TAG", Result.COUNTERFEIT,
                     "This tag ID was never issued by a manufacturer", null);
-            reasons.add(r);
-            if (raiseAlerts && alertOnUnregistered) raise(tagId, r);
-            return new Verdict(tagId, Result.COUNTERFEIT, reasons, List.of(), Instant.now());
+            Verdict verdict = new Verdict(tagId, Result.COUNTERFEIT, List.of(r), List.of(), Instant.now());
+            events.publishEvent(new VerdictIssued(verdict, false, raiseAlerts && alertOnUnregistered));
+            return verdict;
         }
 
-        Batch batch = batches.findById(tag.get().getBatchId()).orElseThrow();
-        Product product = products.findById(batch.getProductId()).orElseThrow();
-        if (batch.isRecalled()) {
-            reasons.add(new Reason("BATCH_RECALLED", Result.SUSPECT,
-                    "Batch " + batch.getLabel() + " has been recalled by the manufacturer", null));
-        }
-
-        List<ScanEvent> events = ledger.eventsFor(tagId);
-        if (events.isEmpty()) {
-            reasons.add(new Reason("NO_HISTORY", Result.SUSPECT,
-                    "No scans have been recorded for this tag, so its journey cannot be confirmed", null));
-        }
-
-        ChainReport chain = ledger.checkChain(tagId);
-        chain.issues().forEach(i -> reasons.add(new Reason(i.code(), Result.COUNTERFEIT,
-                "Event " + i.seq() + ": " + i.message(), i.seq())));
-
-        Map<Long, Checkpoint> cps = checkpoints.findAllById(
-                        events.stream().map(ScanEvent::getCheckpointId).collect(Collectors.toSet()))
-                .stream().collect(Collectors.toMap(Checkpoint::getId, c -> c));
-        RoutePolicy policy = policies.findByProductType(product.getProductType()).orElse(null);
-
-        reasons.addAll(routeChecker.check(events, cps, policy));
-        reasons.addAll(anomalies.detect(events, cps));
-
+        VerificationContext ctx = load(tag.get());
+        List<Reason> reasons = checks.stream().flatMap(c -> c.check(ctx).stream()).toList();
         Result result = reasons.stream().map(Reason::impact).filter(Objects::nonNull)
                 .max(Comparator.naturalOrder()).orElse(Result.AUTHENTIC);
 
-        remember(tagId, result);
-        if (raiseAlerts) {
-            reasons.stream().filter(r -> r.impact() != null).forEach(r -> raise(tagId, r));
-        }
-        List<TimelineEntry> timeline = events.stream().map(e -> {
-            Checkpoint c = cps.get(e.getCheckpointId());
+        Verdict verdict = new Verdict(tagId, result, reasons, timeline(ctx), Instant.now());
+        events.publishEvent(new VerdictIssued(verdict, true, raiseAlerts));
+        return verdict;
+    }
+
+    private VerificationContext load(Tag tag) {
+        Batch batch = batches.findById(tag.getBatchId()).orElseThrow();
+        Product product = products.findById(batch.getProductId()).orElseThrow();
+        List<ScanEvent> history = ledger.eventsFor(tag.getTagId());
+        Map<Long, Checkpoint> cps = checkpoints.findAllById(
+                        history.stream().map(ScanEvent::getCheckpointId).collect(Collectors.toSet()))
+                .stream().collect(Collectors.toMap(Checkpoint::getId, c -> c));
+        RoutePolicy policy = policies.findByProductType(product.getProductType()).orElse(null);
+        return new VerificationContext(tag, batch, product, history, cps, policy);
+    }
+
+    private static List<TimelineEntry> timeline(VerificationContext ctx) {
+        return ctx.events().stream().map(e -> {
+            Checkpoint c = ctx.checkpoints().get(e.getCheckpointId());
             return new TimelineEntry(e.getSeq(), e.getEventType().name(),
                     c != null ? c.getName() : "Checkpoint " + e.getCheckpointId(),
                     c != null ? c.getLocationName() : "", e.getOccurredAt());
         }).toList();
-        return new Verdict(tagId, result, reasons, timeline, Instant.now());
-    }
-
-    /** Stores the outcome for analytics, skipping a repeat of the same verdict seen within the last minute. */
-    private void remember(String tagId, Result result) {
-        Instant now = Instant.now();
-        boolean repeat = records.findFirstByTagIdOrderByIdDesc(tagId)
-                .filter(r -> r.getVerdict() == result && r.getCreatedAt().isAfter(now.minusSeconds(60)))
-                .isPresent();
-        if (!repeat) records.save(new VerificationRecord(tagId, result, now));
-    }
-
-    private void raise(String tagId, Reason r) {
-        Severity severity = r.impact() == Result.COUNTERFEIT ? Severity.HIGH : Severity.MEDIUM;
-        alerts.raise(tagId, r.code(), severity, r.message());
     }
 }

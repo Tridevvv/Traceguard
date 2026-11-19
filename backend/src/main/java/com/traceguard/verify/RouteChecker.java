@@ -6,6 +6,7 @@ import com.traceguard.ledger.ScanEvent;
 import com.traceguard.org.Checkpoint;
 import com.traceguard.policy.RoutePolicy;
 import com.traceguard.policy.RoutePolicy.Step;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -13,9 +14,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** Compares a tag's journey with the approved route policy: order, allowed locations and time limits. */
+/**
+ * Compares a tag's journey with the approved route policy: order, allowed locations and time limits
+ * (ROUTE_DEVIATION, UNAUTHORIZED_LOCATION, TIMING_VIOLATION, and NO_ROUTE_POLICY as information only).
+ */
 @Component
-public class RouteChecker {
+@Order(40)
+public class RouteChecker implements VerificationCheck {
+
+    @Override
+    public List<Reason> check(VerificationContext ctx) {
+        return check(ctx.events(), ctx.checkpoints(), ctx.policy());
+    }
 
     public List<Reason> check(List<ScanEvent> events, Map<Long, Checkpoint> checkpoints, RoutePolicy policy) {
         List<Reason> reasons = new ArrayList<>();

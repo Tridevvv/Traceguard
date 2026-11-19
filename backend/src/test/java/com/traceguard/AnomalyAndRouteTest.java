@@ -1,8 +1,9 @@
 package com.traceguard;
 
-import com.traceguard.anomaly.AnomalyDetector;
 import com.traceguard.anomaly.AnomalyProperties;
 import com.traceguard.anomaly.Geo;
+import com.traceguard.anomaly.MovementRule;
+import com.traceguard.anomaly.ScanBurstRule;
 import com.traceguard.common.Verdicts.Reason;
 import com.traceguard.ledger.ScanEvent;
 import com.traceguard.org.Checkpoint;
@@ -29,7 +30,9 @@ class AnomalyAndRouteTest {
             2L, new Checkpoint(1L, "Warehouse", "Albany", 42.6526, -73.7562),
             3L, new Checkpoint(1L, "Pharmacy", "Chicago", 41.8781, -87.6298));
 
-    final AnomalyDetector detector = new AnomalyDetector(new AnomalyProperties(900, 60, 1, 60, 5));
+    static final AnomalyProperties PROPS = new AnomalyProperties(900, 60, 1, 60, 5);
+    final MovementRule movement = new MovementRule(PROPS);
+    final ScanBurstRule burst = new ScanBurstRule(PROPS);
     final RouteChecker router = new RouteChecker();
 
     /** pairs of (checkpointId, seconds after T0) */
@@ -44,6 +47,13 @@ class AnomalyAndRouteTest {
     }
 
     static long hours(long h) { return h * 3600; }
+
+    /** Both anomaly rules together, in the order the verification engine runs them. */
+    List<Reason> detect(List<ScanEvent> events, Map<Long, Checkpoint> cps) {
+        List<Reason> all = new ArrayList<>(movement.check(events, cps));
+        all.addAll(burst.check(events));
+        return all;
+    }
 
     static List<String> codes(List<Reason> reasons) { return reasons.stream().map(Reason::code).toList(); }
 
@@ -62,19 +72,19 @@ class AnomalyAndRouteTest {
     @Test
     void normalJourneyHasNoAnomalies() {
         var e = events(new long[]{1, 0}, new long[]{2, hours(6)}, new long[]{3, hours(30)});
-        assertEquals(List.of(), detector.detect(e, CPS));
+        assertEquals(List.of(), detect(e, CPS));
     }
 
     @Test
     void sameTagInTwoCitiesSecondsApartIsDuplicatePresence() {
-        var found = detector.detect(events(new long[]{1, 0}, new long[]{3, 40}), CPS);
+        var found = detect(events(new long[]{1, 0}, new long[]{3, 40}), CPS);
         assertEquals(List.of("DUPLICATE_PRESENCE"), codes(found));
     }
 
     @Test
     void impossibleSpeedIsFlaggedOnceNotAsDuplicate() {
         // Boston to Albany (~200 km) in 2 minutes: outside the 60 s window, but ~6000 km/h
-        var found = detector.detect(events(new long[]{1, 0}, new long[]{2, 120}), CPS);
+        var found = detect(events(new long[]{1, 0}, new long[]{2, 120}), CPS);
         assertEquals(List.of("IMPOSSIBLE_TRAVEL"), codes(found));
     }
 
@@ -83,19 +93,19 @@ class AnomalyAndRouteTest {
         Map<Long, Checkpoint> sameSite = Map.of(
                 1L, new Checkpoint(1L, "Dock A", "Boston", 42.3601, -71.0589),
                 2L, new Checkpoint(1L, "Dock B", "Boston", 42.3602, -71.0590));
-        assertEquals(List.of(), detector.detect(events(new long[]{1, 0}, new long[]{2, 10}), sameSite));
+        assertEquals(List.of(), detect(events(new long[]{1, 0}, new long[]{2, 10}), sameSite));
     }
 
     @Test
     void sixScansInAMinuteIsABurst() {
         var e = events(new long[]{1, 0}, new long[]{1, 5}, new long[]{1, 10}, new long[]{1, 15}, new long[]{1, 20}, new long[]{1, 25});
-        assertEquals(List.of("SCAN_BURST"), codes(detector.detect(e, CPS)));
+        assertEquals(List.of("SCAN_BURST"), codes(detect(e, CPS)));
     }
 
     @Test
     void fiveScansInAMinuteIsFine() {
         var e = events(new long[]{1, 0}, new long[]{1, 5}, new long[]{1, 10}, new long[]{1, 15}, new long[]{1, 20});
-        assertEquals(List.of(), detector.detect(e, CPS));
+        assertEquals(List.of(), detect(e, CPS));
     }
 
     // ---- route checker ----

@@ -29,8 +29,15 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Build and test
+      - name: Build and test (with JaCoCo coverage)
         run: mvn -B verify
+
+      - name: Upload coverage report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/target/site/jacoco/
 
       - name: Upload test reports on failure
         if: failure()
@@ -69,9 +76,9 @@ jobs:
         if: steps.detect.outputs.exists == 'true'
         run: npm run lint --if-present
 
-      - name: Test
+      - name: Test (with coverage)
         if: steps.detect.outputs.exists == 'true'
-        run: npm test --if-present
+        run: npm run test:coverage
 
       - name: Build
         if: steps.detect.outputs.exists == 'true'

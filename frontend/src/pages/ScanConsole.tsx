@@ -12,6 +12,8 @@ export function ScanConsole() {
   const [checkpointId, setCheckpointId] = useState('')
   const [tagId, setTagId] = useState('')
   const [eventType, setEventType] = useState<EventType>('RECEIVED')
+  // Optional, for demos: replays a journey with past times. Empty means "now".
+  const [scanTime, setScanTime] = useState('')
   const [events, setEvents] = useState<ScanEventView[]>([])
   const [lastSeq, setLastSeq] = useState<number | null>(null)
   const { run: runLoad, error: loadError } = useAction()
@@ -25,7 +27,12 @@ export function ScanConsole() {
     e.preventDefault()
     const id = tagId.trim()
     const created = await scan.run(() =>
-      api<ScanEventView>('/scans/simulate', { method: 'POST', body: { tagId: id, checkpointId: Number(checkpointId), eventType } }))
+      api<ScanEventView>('/scans/simulate', { method: 'POST', body: {
+        tagId: id,
+        checkpointId: Number(checkpointId),
+        eventType,
+        timestamp: scanTime ? new Date(scanTime).toISOString() : undefined,
+      } }))
     if (!created) return
     setLastSeq(created.seq)
     const all = await scan.run(() => api<ScanEventView[]>(`/tags/${encodeURIComponent(id)}/events`))
@@ -48,6 +55,8 @@ export function ScanConsole() {
           <TextField select label="Event" value={eventType} onChange={(e) => setEventType(e.target.value as EventType)} sx={{ minWidth: 160 }}>
             {EVENT_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
           </TextField>
+          <TextField label="Scan time (optional)" type="datetime-local" value={scanTime} onChange={(e) => setScanTime(e.target.value)}
+            helperText="Empty means now" slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 220 }} />
           <Button type="submit" variant="contained" disabled={scan.busy || !checkpointId}>Scan</Button>
         </Stack>
       </Paper>
