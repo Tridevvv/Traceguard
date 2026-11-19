@@ -28,6 +28,24 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['ADMIN', 'MANUFACTURER', 'DISTRIBUTOR', 'RETAILER', 'AUDITOR'],
   },
   {
+    label: 'Alerts',
+    path: '/alerts',
+    description: 'Review suspect and counterfeit findings; acknowledge or resolve them.',
+    roles: ['ADMIN', 'MANUFACTURER', 'AUDITOR'],
+  },
+  {
+    label: 'Analytics',
+    path: '/analytics',
+    description: 'Scan volume, verdict breakdown, alert trends and checkpoint activity.',
+    roles: ['ADMIN', 'MANUFACTURER', 'AUDITOR'],
+  },
+  {
+    label: 'Reports',
+    path: '/reports',
+    description: 'Download audit reports and product histories as CSV or PDF.',
+    roles: ['ADMIN', 'MANUFACTURER', 'AUDITOR'],
+  },
+  {
     label: 'Admin Panel',
     path: '/admin',
     description: 'Manage organizations, checkpoints and users.',

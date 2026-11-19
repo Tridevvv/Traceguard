@@ -9,7 +9,7 @@ export function Landing() {
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const id = tagId.trim()
-    if (id) navigate(`/verify/${encodeURIComponent(id)}`)
+    if (id) navigate(`/check/${encodeURIComponent(id)}`)
   }
 
   return (
@@ -27,7 +27,7 @@ export function Landing() {
           <Button type="submit" variant="contained" size="large" disabled={!tagId.trim()}>Verify</Button>
         </Stack>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          QR scanning and public verification arrive in Phase 3; for now, sign in to verify a tag.
+          No account needed. You can also scan the QR code on the product label with your phone’s camera.
         </Typography>
       </Paper>
     </Stack>

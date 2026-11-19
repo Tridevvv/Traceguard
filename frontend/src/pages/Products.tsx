@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import {
   Alert, Button, Chip, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography,
 } from '@mui/material'
+import { Link as RouterLink } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import type { Batch, Product, TagsResponse } from '../types'
@@ -113,6 +114,7 @@ export function Products() {
               {b.recalled && <Chip size="small" color="error" label="RECALLED" />}
               <Button size="small" disabled={b.recalled || create.busy} onClick={() => void issueTags(b)}>Issue tags</Button>
               <Button size="small" color="error" disabled={b.recalled || create.busy} onClick={() => void recall(b)}>Recall</Button>
+              <Button size="small" component={RouterLink} to={`/labels/${b.id}`}>QR labels</Button>
             </Stack>
           ))}
           {batches.length === 0 && <Typography color="text.secondary">No batches yet.</Typography>}

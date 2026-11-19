@@ -38,8 +38,12 @@ Traceguard/
   frontend/                        React 19 + TypeScript (Vite, Material-UI)
     src/api/         fetch client that attaches the JWT
     src/auth/        auth context and role-based route guard
+    src/api/reports  URL builders for the CSV/PDF report endpoints
+    src/qr.ts        QR label links and scanned-value parsing
     src/pages/       Landing, Login, Dashboard, Products, ScanConsole, Verify, VerdictPanel,
-                     Admin, RoutePolicyEditor, EventTimeline
+                     Admin, RoutePolicyEditor, EventTimeline, Alerts, Analytics, Charts,
+                     Reports, PublicCheck (consumer page), QrLabels
+    src/test/        test setup and shared helpers (fake backend, sign-in)
     src/**/*.test.*  Vitest + Testing Library tests
   database/                        PostgreSQL schema draft (schema.sql)
   docs/                            Phase 1 design: requirements, architecture, UML, API, threat model
@@ -85,7 +89,8 @@ These passwords exist only in the local dev profile. Outside `dev`, set `TRACEGU
 3. Under **Scan Console**, scan the tag at Factory, then Warehouse, then Pharmacy. Each scan becomes a signed event linked to the previous one. To replay a realistic journey, set **Scan time** a few hours apart.
 4. Under **Verify a Tag**, check the tag. It shows **AUTHENTIC**, with the ledger timeline and hashes.
 5. Scan a second tag at Factory and then directly at Pharmacy. Verify shows **SUSPECT** with `ROUTE_DEVIATION`.
-6. Verify `TG-DEMO-CLONED`: it shows **COUNTERFEIT** with `DUPLICATE_PRESENCE`, because the same tag was seen in Boston and Chicago 40 seconds apart. The same verdict is available to consumers, with no login, at http://localhost:8080/api/public/verify/TG-DEMO-CLONED.
+6. Verify `TG-DEMO-CLONED`: it shows **COUNTERFEIT** with `DUPLICATE_PRESENCE`, because the same tag was seen in Boston and Chicago 40 seconds apart. Sign in as admin or the manufacturer and open **Alerts**: the finding is listed there and can be acknowledged and resolved. **Analytics** shows the verdict breakdown, scan volume and alerts by reason, and **Reports** downloads the audit log or a product's history as CSV or PDF.
+7. As a consumer, with no login, open http://localhost:5173/check/TG-DEMO-CLONED (or type the tag on the home page) to see the same verdict and the product's journey. In the Product Registry, **QR labels** on a batch prints one QR code per tag; scanning a label with a phone camera opens that tag's check page.
 
 ## Feature Status
 
@@ -93,17 +98,17 @@ These passwords exist only in the local dev profile. Outside `dev`, set `TRACEGU
 |---|---|---|
 | FR-1: Registration and login with JWT and role-based access | Complete | `auth/` (`SecurityConfig`, `JwtService`, `UserService`); `frontend/src/auth/` |
 | FR-2: Create organizations, checkpoints and route policies | Complete | `org/OrgService`, `policy/RoutePolicyService`; `pages/Admin.tsx`, `pages/RoutePolicyEditor.tsx` |
-| FR-3: Register products and batches; generate unique tag IDs and QR codes | Partial | Products, batches and tag IDs: `catalog/CatalogService`, `pages/Products.tsx`. QR labels: in progress |
+| FR-3: Register products and batches; generate unique tag IDs and QR codes | Complete | `catalog/CatalogService`, `pages/Products.tsx`; printable QR labels per batch in `pages/QrLabels.tsx` (links built by `src/qr.ts`) |
 | FR-4: Accept scans and create signed, hash-linked events | Complete | `ledger/LedgerService.append()`, `reader/SimulatedReader`, `crypto/SignatureService`; `pages/ScanConsole.tsx` |
 | FR-5: Append-only ledger with no update or delete | Complete | `ledger/ScanEvent` (`@Immutable`), `ScanEventRepository` (no update or delete methods) |
 | FR-6: Verify signatures, hash chain, route order and timing | Complete | `verify/VerificationService`, `ChainIntegrityCheck`, `RouteChecker`; `pages/Verify.tsx` |
 | FR-7: Detect anomalies (cloned tag, impossible travel, unregistered tag, unauthorized location, scan burst) | Complete | `anomaly/MovementRule`, `anomaly/ScanBurstRule`, `verify/RouteChecker`; thresholds in `application.yml` |
 | FR-8: AUTHENTIC / SUSPECT / COUNTERFEIT verdict with machine-readable reasons | Complete | `common/Verdicts` (14 reason codes); `pages/VerdictPanel.tsx` |
-| FR-9: Raise, display and manage alerts; email on high severity | Partial | Backend complete: `alert/AlertService`, `VerdictAlertListener`, `SmtpNotifier`. Alerts center page: in progress |
+| FR-9: Raise, display and manage alerts; email on high severity | Complete | `alert/AlertService`, `VerdictAlertListener`, `SmtpNotifier`; alerts center with status filter, acknowledge and resolve in `pages/Alerts.tsx` |
 | FR-10: Flag or recall all products in a batch | Complete | `CatalogService.recall()`, `verify/RecallCheck`; Recall button in `pages/Products.tsx` |
-| FR-11: Public consumer verification by tag ID or QR code | Partial | Backend complete: `GET /api/public/verify/{tagId}` (`VerifyController`, `PublicRateLimitFilter`). Consumer page: in progress |
-| FR-12: Analytics (scan volume, verdicts, alerts, checkpoints) | Partial | Backend complete: `analytics/AnalyticsService`, `/api/analytics/*`. Dashboard charts: in progress |
-| FR-13: Export audit reports as PDF/CSV | Partial | Backend complete: `report/ReportService`, `CsvExporter`, `PdfExporter`, `/api/reports/*`. Download buttons: in progress |
+| FR-11: Public consumer verification by tag ID or QR code | Complete | `GET /api/public/verify/{tagId}` (`VerifyController`, `PublicRateLimitFilter`); consumer page `/check/:tagId` in `pages/PublicCheck.tsx`, reached from the home page or a QR label |
+| FR-12: Analytics (scan volume, verdicts, alerts, checkpoints) | Complete | `analytics/AnalyticsService`, `/api/analytics/*`; dashboard in `pages/Analytics.tsx` with charts in `pages/Charts.tsx` |
+| FR-13: Export audit reports as PDF/CSV | Complete | `report/ReportService`, `CsvExporter`, `PdfExporter`, `/api/reports/*`; `pages/Reports.tsx` and history downloads on `pages/Verify.tsx`, via `download()` in `api/client.ts` |
 | FR-14: Log all user actions for audit | Complete | `audit/AuditService`, `GET /api/audit-log` |
 
 ## Scope and Design Changes Since Phase 1
@@ -116,6 +121,9 @@ These passwords exist only in the local dev profile. Outside `dev`, set `TRACEGU
 | The database schema is created by JPA. Flyway migrations and the PostgreSQL trigger that blocks ledger edits are moved to Phase 5. | The append-only rule is already enforced in code (immutable entity, a repository without update or delete), and the hash chain detects any edit made directly in the database. That last case is covered by a test. Migrations matter once there is a deployed database to upgrade. |
 | Anomaly thresholds (maximum speed, duplicate window and distance, burst size) are configuration properties instead of constants. | Real speeds differ by product and region, and the demo data needs tight windows. Configuration lets each deployment tune the rules without code changes. |
 | A `NO_ROUTE_POLICY` reason was added as information only. | Without a route policy, route and timing cannot be checked. Reporting this without changing the verdict tells the user why those checks were skipped. |
+| Analytics charts are drawn with Material-UI boxes (`pages/Charts.tsx`) instead of Chart.js or Recharts. | The dashboard needs four simple charts: bars, daily columns and one stacked bar. A charting library would add well over 100 kB to a bundle that is already above Vite's size warning, and our own components label every bar with its number, so values are readable without hovering and easy to test. |
+| QR codes encode a link to the public check page, and in-page scanning uses the browser's built-in `BarcodeDetector` instead of the `html5-qrcode` library. | A link means any phone camera opens the verdict directly, with no app. The built-in detector covers in-page scanning in Chrome, Edge and Android without another dependency; in other browsers the page asks the user to use the phone camera or type the tag ID. `qrcode.react` is still used to draw the labels. |
+| The consumer page is a separate route (`/check`) rather than a mode of the staff Verify page. | Consumers have no account. The public page shows the verdict and the product's journey but not ledger hashes or staff actions, and it explains the rate limit in plain words. The home page verify box now goes to this page. |
 | The Scan Console accepts an optional scan time. | Demos and tests need journeys that span hours or days. Both scan endpoints already accept a reader-reported time, because a real reader may upload scans after a delay. A backdated or out-of-order time cannot hide tampering: the time is part of the signed hash, and the route checker flags out-of-order times as `TIMING_VIOLATION`. |
 
 ## Design Patterns and Principles Applied
@@ -132,6 +140,8 @@ These passwords exist only in the local dev profile. Outside `dev`, set `TRACEGU
 | Immutability | `ScanEvent` (`@Immutable`), Java records for every request, response and `Verdict` | Ledger events can never be changed through the application, and value objects can't be modified after they are created. |
 | Separation of data and format | `report/ReportTable`, written by `CsvExporter` and `PdfExporter` | Each report is built once as a table. Adding a format means writing one exporter, not changing every report. |
 | Single source of truth, DRY | `frontend/src/nav.ts` drives the menu, the dashboard cards and the route guards; the `useAction` hook handles busy and error state for every form | Role permissions in the UI can't drift apart, and forms don't repeat the same error handling. |
+| Container / presentational components | `pages/Analytics.tsx` fetches and shapes the data; `pages/Charts.tsx` (`StatCard`, `BarList`, `DailyColumns`, `StackedBar`) only draws what it is given | Charts are reusable and know nothing about the API, so a new metric is a few lines on the page, and chart behavior is tested through plain props. |
+| Facade | `download()` in `frontend/src/api/client.ts`, used by `pages/Reports.tsx` and `pages/Verify.tsx`; report URLs built in `api/reports.ts` | Saving a report needs the JWT header, the file name from `Content-Disposition`, an object URL and error mapping. Pages call one function and never repeat those steps. |
 
 ## Testing
 
@@ -140,12 +150,17 @@ These passwords exist only in the local dev profile. Outside `dev`, set `TRACEGU
   - distance calculation
   - CSV/PDF exporters, including CSV formula-injection protection
 
-  26 service tests run against an in-memory database: the ledger (linking, tampering, forged signatures, replay), every verdict scenario of the verification engine, and the analytics aggregates. 20 frontend tests use Vitest and React Testing Library:
+  26 service tests run against an in-memory database: the ledger (linking, tampering, forged signatures, replay), every verdict scenario of the verification engine, and the analytics aggregates. 49 frontend tests use Vitest and React Testing Library. Each page test renders the whole app with routing and auth against a fake backend (`src/test/helpers.tsx`):
   - JWT decoding, role-based routing and menus
   - the login form
-  - the Verify page verdict view
+  - the Verify page verdict view and its history downloads
   - the route-policy editor
   - the Scan Console
+  - the alerts center: ordering, status filter, resolve, auditor read-only, retailer blocked
+  - the analytics dashboard: summary, every chart, period change, manufacturer scope
+  - the consumer page: verdict without login, home-page entry, pasted QR links, rate-limit message
+  - QR labels: one code per tag, printing, empty batch, link from the Product Registry
+  - reports: URL building, file names, CSV/PDF downloads with the JWT, server errors, role-based sections
 - **Integration tests:** 22 MockMvc tests drive the full stack through the REST API:
   - the complete supply-chain flow
   - a journey checked against a route policy, ending in AUTHENTIC and SUSPECT verdicts
@@ -155,7 +170,7 @@ These passwords exist only in the local dev profile. Outside `dev`, set `TRACEGU
   - role rules (401 and 403)
   - report exports
   - the public rate limit
-- **Coverage:** backend 86% of lines overall (JaCoCo), with 100% on the verification engine, 98% on anomaly detection and 91% on the ledger, which meets NFR-6. Frontend 63% of lines (Vitest v8).
+- **Coverage:** backend 86% of lines overall (JaCoCo), with 100% on the verification engine, 98% on anomaly detection and 91% on the ledger, which meets NFR-6. Frontend 77% of lines (Vitest v8).
 - **CI:** all suites run in GitHub Actions on every pull request and every push to `main`, and the backend coverage report is uploaded as a build artifact.
 
 ```bash
@@ -167,17 +182,18 @@ These passwords exist only in the local dev profile. Outside `dev`, set `TRACEGU
 
 ## Known Issues
 
-- The alerts center, analytics dashboard, consumer page with QR labels, and report download buttons are still being built. Their APIs are complete and tested, so these features currently work through Swagger UI.
+- In-page QR scanning on the consumer page works only in browsers with the built-in `BarcodeDetector` (Chrome, Edge, Android). Elsewhere, users scan the label with the phone camera, which opens the same page.
+- Camera scanning is not covered by automated tests, because jsdom has no camera. The QR link format it relies on is unit-tested in `src/qr.test.ts`.
 - The H2 database in the `dev` profile is in memory, so data created during a session is lost when the backend restarts. The demo data is loaded again on every start.
 - Any signed-in staff user can simulate a scan at any checkpoint. Authenticating real readers with checkpoint credentials is planned for the QA phase.
 - The public endpoint's rate limit is held in memory, so it applies per server instance.
 - The performance targets (verification under 2 seconds, 100 scans per second) have not been load-tested yet. This is planned for the QA phase.
 - TLS is not configured locally. It comes with the deployment setup (Nginx in front of the app) in Phase 5.
-- The frontend production bundle is over Vite's 500 kB warning size. Code-splitting the pages is planned.
+- The frontend production bundle (about 620 kB) is over Vite's 500 kB warning size. Code-splitting the pages is planned.
 
 ## Team Contributions (Phase 3)
 
 | Member | Contributions This Phase | Commits (total) |
 |---|---|---|
 | Tridev Prabhu | **Design:** refactored the verification engine into Strategy rules (`VerificationCheck` and six check classes) and Observer listeners (`VerdictIssued`, `VerdictAlertListener`, `VerificationHistoryRecorder`).<br>**Frontend:** route-policy editor in the Admin Panel (`RoutePolicyEditor`); optional scan time in the Scan Console.<br>**Testing:** `WorkflowIntegrationTest` (route, tampering, recall and wiring workflows); JaCoCo and Vitest coverage in CI; 6 frontend tests; fixed a time-zone-dependent analytics test.<br>**Reports:** reasons column in the product-history report.<br>**Docs:** Phase 3 README. | 4 (16) |
-| Sanjay Gokulakrishanan | TODO before submission: Sanjay adds his Phase 3 work here (alerts center, analytics dashboard, consumer page and QR labels, report downloads, and tests). | 0 (5) |
+| Sanjay Gokulakrishanan | **Frontend:** alerts center with status filter, acknowledge and resolve (`Alerts`); analytics dashboard with reusable chart components (`Analytics`, `Charts`); public consumer check page with optional camera QR scanning (`PublicCheck`); printable QR labels per batch (`QrLabels`, `qr.ts`); report downloads for audit reports and product histories (`Reports`, `download()` in `api/client.ts`, `api/reports.ts`, buttons on `Verify`); menu and route wiring for the new pages.<br>**Testing:** 29 frontend tests across 6 new test files; shared test helpers (`test/helpers.tsx`); frontend coverage raised from 63% to 77% of lines.<br>**Docs:** Phase 3 feature status, scope changes and design-pattern rows for the new pages. | 8 (13) |
