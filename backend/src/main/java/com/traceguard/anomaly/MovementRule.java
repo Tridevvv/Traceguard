@@ -4,6 +4,9 @@ import com.traceguard.common.Verdicts.Reason;
 import com.traceguard.common.Verdicts.Result;
 import com.traceguard.ledger.ScanEvent;
 import com.traceguard.org.Checkpoint;
+import com.traceguard.verify.VerificationCheck;
+import com.traceguard.verify.VerificationContext;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -12,27 +15,27 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Rule-based detectors over one tag's events (oldest first):
- * DUPLICATE_PRESENCE (cloned tag), IMPOSSIBLE_TRAVEL and SCAN_BURST.
- * UNREGISTERED_TAG, UNAUTHORIZED_LOCATION and route/timing rules live in the verification engine and route checker.
+ * Looks at each move between two different checkpoints:
+ * DUPLICATE_PRESENCE when the same tag shows up far away within seconds (a cloned tag), and
+ * IMPOSSIBLE_TRAVEL when the implied speed is faster than any real shipment.
  */
 @Component
-public class AnomalyDetector {
+@Order(50)
+public class MovementRule implements VerificationCheck {
 
     private final AnomalyProperties props;
 
-    public AnomalyDetector(AnomalyProperties props) {
+    public MovementRule(AnomalyProperties props) {
         this.props = props;
     }
 
-    public List<Reason> detect(List<ScanEvent> events, Map<Long, Checkpoint> checkpoints) {
-        List<Reason> reasons = new ArrayList<>();
-        detectMovement(events, checkpoints, reasons);
-        detectBurst(events, reasons);
-        return reasons;
+    @Override
+    public List<Reason> check(VerificationContext ctx) {
+        return check(ctx.events(), ctx.checkpoints());
     }
 
-    private void detectMovement(List<ScanEvent> events, Map<Long, Checkpoint> cps, List<Reason> out) {
+    public List<Reason> check(List<ScanEvent> events, Map<Long, Checkpoint> cps) {
+        List<Reason> out = new ArrayList<>();
         for (int i = 1; i < events.size(); i++) {
             ScanEvent prev = events.get(i - 1);
             ScanEvent cur = events.get(i);
@@ -61,23 +64,7 @@ public class AnomalyDetector {
                 }
             }
         }
-    }
-
-    private void detectBurst(List<ScanEvent> events, List<Reason> out) {
-        int start = 0;
-        for (int end = 0; end < events.size(); end++) {
-            while (Duration.between(events.get(start).getOccurredAt(), events.get(end).getOccurredAt()).getSeconds()
-                    > props.burstWindowSeconds()) {
-                start++;
-            }
-            int count = end - start + 1;
-            if (count > props.burstMaxScans()) {
-                out.add(new Reason("SCAN_BURST", Result.SUSPECT,
-                        count + " scans within " + props.burstWindowSeconds() + " s (limit " + props.burstMaxScans() + ")",
-                        events.get(end).getSeq()));
-                return; // one finding per tag is enough
-            }
-        }
+        return out;
     }
 
     private static String name(Checkpoint c, ScanEvent e) {
