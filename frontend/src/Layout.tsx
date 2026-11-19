@@ -9,7 +9,7 @@ export function Layout() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="secondary" elevation={0}>
+      <AppBar position="static" color="secondary" elevation={0} className="no-print">
         <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
           <Typography variant="h6" component={RouterLink} to="/" sx={{ color: 'inherit', textDecoration: 'none', fontWeight: 700, mr: 2 }}>
             TraceGuard
