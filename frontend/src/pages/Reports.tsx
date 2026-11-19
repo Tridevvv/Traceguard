@@ -5,6 +5,9 @@ import { auditReportPath, isoDay, tagReportPath, type ReportFormat as Format } f
 import { useAuth } from '../auth/useAuth'
 import { useAction } from '../useAction'
 
+/** Keeps "Download CSV/PDF" on one line next to a full-width field. */
+const NO_WRAP_BUTTONS = { '& .MuiButton-root': { whiteSpace: 'nowrap', flexShrink: 0 } }
+
 const AUDIT_TYPES = [
   { value: 'actions', label: 'User activity (audit log)' },
   { value: 'alerts', label: 'Alerts' },
@@ -53,7 +56,7 @@ export function Reports() {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Dates are inclusive, in UTC. At most 366 days and 10,000 rows per report.
           </Typography>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={NO_WRAP_BUTTONS}>
             <TextField select label="Report" value={type} onChange={(e) => setType(e.target.value)} sx={{ minWidth: 240 }}>
               {AUDIT_TYPES.map((t) => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
             </TextField>
@@ -70,7 +73,7 @@ export function Reports() {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           The tag’s current verdict, every reason and its full scan timeline.
         </Typography>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={NO_WRAP_BUTTONS}>
           <TextField fullWidth label="Tag ID" value={tagId} onChange={(e) => setTagId(e.target.value)} />
           <Button variant="contained" disabled={busy || !tagId.trim()} onClick={tagDownload('csv')}>Download CSV</Button>
           <Button variant="outlined" disabled={busy || !tagId.trim()} onClick={tagDownload('pdf')}>Download PDF</Button>
