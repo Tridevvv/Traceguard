@@ -3,6 +3,7 @@ import { ProtectedRoute } from './auth/ProtectedRoute'
 import { Layout } from './Layout'
 import { NAV_ITEMS } from './nav'
 import { Admin } from './pages/Admin'
+import { Alerts } from './pages/Alerts'
 import { Dashboard } from './pages/Dashboard'
 import { Landing } from './pages/Landing'
 import { Login } from './pages/Login'
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="products" element={guard('/products', <Products />)} />
         <Route path="scan" element={guard('/scan', <ScanConsole />)} />
         <Route path="admin" element={guard('/admin', <Admin />)} />
+        <Route path="alerts" element={guard('/alerts', <Alerts />)} />
         {/* Verify is reachable signed-out so the landing page box works; the page asks for sign-in. */}
         <Route path="verify" element={<Verify />} />
         <Route path="verify/:tagId" element={<Verify />} />
