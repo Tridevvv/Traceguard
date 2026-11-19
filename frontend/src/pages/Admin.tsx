@@ -3,6 +3,7 @@ import { Alert, Button, MenuItem, Paper, Stack, TextField, Typography } from '@m
 import { api } from '../api/client'
 import type { Checkpoint, Organization, OrgType, Role } from '../types'
 import { useAction } from '../useAction'
+import { RoutePolicyEditor } from './RoutePolicyEditor'
 
 const ORG_TYPES: OrgType[] = ['MANUFACTURER', 'DISTRIBUTOR', 'RETAILER', 'OTHER']
 const ROLES: Role[] = ['ADMIN', 'MANUFACTURER', 'DISTRIBUTOR', 'RETAILER', 'AUDITOR']
@@ -103,6 +104,8 @@ export function Admin() {
           {checkpoints.length} checkpoint(s) exist. Latitude and longitude are used later for impossible-travel detection.
         </Typography>
       </Paper>
+
+      <RoutePolicyEditor checkpoints={checkpoints} />
 
       <Paper component="form" onSubmit={addUser} sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>New user</Typography>

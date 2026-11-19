@@ -75,3 +75,16 @@ export interface Verdict {
   timeline: VerdictTimelineEntry[]
   verifiedAt: string
 }
+
+/** One stop of a route policy; maxHoursFromPrevious null means no limit for that leg. */
+export interface RouteStep {
+  checkpointId: number
+  maxHoursFromPrevious: number | null
+}
+
+export interface RoutePolicy {
+  id: number
+  productType: string
+  maxTotalHours: number
+  steps: RouteStep[]
+}
