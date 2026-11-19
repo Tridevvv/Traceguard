@@ -99,12 +99,16 @@ public class ReportService {
         List<String> notes = new ArrayList<>();
         notes.add("Tag: " + tagId + "   Verdict: " + v.verdict());
         v.reasons().forEach(reason -> notes.add("  " + reason.code() + (reason.impact() == null ? " (info)" : " [" + reason.impact() + "]") + ": " + reason.message()));
+        // Like the verdict, the reason codes are repeated on every row, so the CSV (which has no notes) carries them too.
+        String codes = v.reasons().stream()
+                .map(reason -> reason.code() + (reason.impact() == null ? " (info)" : " [" + reason.impact() + "]"))
+                .collect(Collectors.joining("; "));
         List<List<String>> rows = new ArrayList<>();
-        v.timeline().forEach(t -> rows.add(List.of(tagId, v.verdict().name(), String.valueOf(t.seq()), t.eventType(),
+        v.timeline().forEach(t -> rows.add(List.of(tagId, v.verdict().name(), codes, String.valueOf(t.seq()), t.eventType(),
                 t.checkpointName(), t.locationName(), t.occurredAt().toString())));
-        if (rows.isEmpty()) rows.add(List.of(tagId, v.verdict().name(), "", "", "", "", ""));
+        if (rows.isEmpty()) rows.add(List.of(tagId, v.verdict().name(), codes, "", "", "", "", ""));
         return new ReportTable("Product history report", notes,
-                List.of("Tag", "Verdict", "Seq", "Event", "Checkpoint", "Location", "Time (UTC)"), rows);
+                List.of("Tag", "Verdict", "Reasons", "Seq", "Event", "Checkpoint", "Location", "Time (UTC)"), rows);
     }
 
     private static Pageable page() {
