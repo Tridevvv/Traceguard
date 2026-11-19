@@ -34,6 +34,12 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['ADMIN', 'MANUFACTURER', 'AUDITOR'],
   },
   {
+    label: 'Analytics',
+    path: '/analytics',
+    description: 'Scan volume, verdict breakdown, alert trends and checkpoint activity.',
+    roles: ['ADMIN', 'MANUFACTURER', 'AUDITOR'],
+  },
+  {
     label: 'Admin Panel',
     path: '/admin',
     description: 'Manage organizations, checkpoints and users.',
