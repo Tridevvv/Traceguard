@@ -30,10 +30,11 @@ Tick items as they are finished. Move to the next phase only when the current on
 ## Phase 3: Verification and Intelligence (Weeks 5-7)
 
 - [x] Verification engine and route policies (backend)
-- [x] Anomaly detection rules and alert system (backend; alerts center UI still to do)
+- [x] Anomaly detection rules and alerts center (status filter, acknowledge, resolve)
 - [x] Scan console and verification page (UI: show verdict, reasons, timestamp field for demos)
-- [ ] Analytics dashboard and consumer verification page (QR) (analytics API and public verify API done; UI pending)
-- [x] Batch recall and audit report export (PDF/CSV) (API; download buttons in UI pending)
+- [x] Analytics dashboard and public consumer verification page with printable QR labels
+- [x] Batch recall and CSV/PDF downloads for audit and product-history reports
+- [x] Phase 3 README with requirement mapping, design changes, testing and team contributions
 
 ## Phase 4: Testing and QA (Weeks 8-9)
 
