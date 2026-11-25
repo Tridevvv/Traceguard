@@ -53,7 +53,7 @@ Traceguard/
 
 ## Setup and Run
 
-**Prerequisites:** Git, JDK 17 or newer, Maven 3.9 or newer, and Node.js 24 (22.22 or newer also works). No accounts, API keys or RFID hardware are needed, because readers are simulated. Docker is optional and only needed for PostgreSQL.
+**Prerequisites:** Git, JDK 17 or newer, Maven 3.9 or newer, and Node.js 24.15 or newer in the 24.x series (22.22.2 or newer in the 22.x series also works). No accounts, API keys or RFID hardware are needed, because readers are simulated. Docker is optional and only needed for PostgreSQL.
 
 ```bash
 # Clone
@@ -61,7 +61,7 @@ git clone https://github.com/Tridevvv/Traceguard.git
 cd Traceguard
 
 # Install dependencies (the backend's are downloaded by Maven on the first run)
-(cd frontend && npm install)
+(cd frontend && npm ci)
 
 # Run the application: two terminals, both started from the Traceguard folder
 (cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=dev)   # terminal 1: API on http://localhost:8080
@@ -84,13 +84,13 @@ These passwords exist only in the local dev profile. Outside `dev`, set `TRACEGU
 
 **Primary use case end to end:**
 
-1. Sign in as `admin@traceguard.local`. Under **Admin Panel → Route policies**, create a route for product type `pharma`: Factory, then Warehouse, then Pharmacy.
-2. Sign in as `manufacturer@demo.local`. Under **Product Registry**, create a product of type `pharma`, add a batch and issue tags. Copy one tag ID.
-3. Under **Scan Console**, scan the tag at Factory, then Warehouse, then Pharmacy. Each scan becomes a signed event linked to the previous one. To replay a realistic journey, set **Scan time** a few hours apart.
+1. Sign in as `admin@traceguard.local`. Under **Admin Panel → Route policies**, confirm the demo policy for `pharma` lists Factory, Warehouse and Pharmacy in that order. The `dev` profile creates this policy at startup.
+2. Sign in as `manufacturer@demo.local`. Under **Product Registry**, create a product of type `pharma`, add a batch and issue two tags. Copy both tag IDs.
+3. Under **Scan Console**, record the first tag at Factory (`REGISTERED`, 30 hours ago), Warehouse (`RECEIVED`, 24 hours ago) and Pharmacy (`DELIVERED`, 2 hours ago). Set **Scan time** on each event to simulate realistic travel. Each scan becomes a signed event linked to the previous one.
 4. Under **Verify a Tag**, check the tag. It shows **AUTHENTIC**, with the ledger timeline and hashes.
-5. Scan a second tag at Factory and then directly at Pharmacy. Verify shows **SUSPECT** with `ROUTE_DEVIATION`.
-6. Verify `TG-DEMO-CLONED`: it shows **COUNTERFEIT** with `DUPLICATE_PRESENCE`, because the same tag was seen in Boston and Chicago 40 seconds apart. Sign in as admin or the manufacturer and open **Alerts**: the finding is listed there and can be acknowledged and resolved. **Analytics** shows the verdict breakdown, scan volume and alerts by reason, and **Reports** downloads the audit log or a product's history as CSV or PDF.
-7. As a consumer, with no login, open http://localhost:5173/check/TG-DEMO-CLONED (or type the tag on the home page) to see the same verdict and the product's journey. In the Product Registry, **QR labels** on a batch prints one QR code per tag; scanning a label with a phone camera opens that tag's check page.
+5. Scan the second tag at Factory (`REGISTERED`, 30 hours ago) and then directly at Pharmacy (`DELIVERED`, 2 hours ago). Verify shows **SUSPECT** with `ROUTE_DEVIATION`.
+6. Verify `TG-DEMO-CLONED`. It shows **COUNTERFEIT** with `DUPLICATE_PRESENCE` because the same tag was seen in Boston and Chicago 40 seconds apart. As admin or manufacturer, open **Alerts** to acknowledge and resolve the finding, then open **Analytics** to view verdicts, scan volume and alerts by reason. Use **Reports** to download a product's history as CSV or PDF. Sign in as admin or auditor to download the audit log.
+7. As a consumer, with no login, open http://localhost:5173/check/TG-DEMO-CLONED (or type the tag on the home page) to see the same verdict and the product's journey. In the Product Registry, **QR labels** on a batch prints one QR code per tag. For a phone demo, start the frontend with `npm run dev -- --host`, open the app using the computer's LAN address on the same network, and generate labels from that address so the phone can reach the links.
 
 ## Feature Status
 
