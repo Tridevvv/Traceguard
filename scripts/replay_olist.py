@@ -82,7 +82,7 @@ class TraceGuardApi:
             with self.opener.open(request, timeout=25) as response:
                 return json.load(response)
         except HTTPError as error:
-            raise ValueError(f"{request.method} {path}: HTTP {error.code}") from error
+            raise ValueError(f"{request.get_method()} {path}: HTTP {error.code}") from error
 
 
 def find_or_create(api, path, field, body, items=None):
