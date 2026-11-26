@@ -29,3 +29,7 @@ coverage/
 *.p12
 *.jks
 keystore/
+
+# Local Python and Olist replay input
+__pycache__/
+olist_orders_dataset.csv

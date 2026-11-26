@@ -92,6 +92,8 @@ These passwords exist only in the local dev profile. Outside `dev`, set `TRACEGU
 6. Verify `TG-DEMO-CLONED`. It shows **COUNTERFEIT** with `DUPLICATE_PRESENCE` because the same tag was seen in Boston and Chicago 40 seconds apart. As admin or manufacturer, open **Alerts** to acknowledge and resolve the finding, then open **Analytics** to view verdicts, scan volume and alerts by reason. Use **Reports** to download a product's history as CSV or PDF. Sign in as admin or auditor to download the audit log.
 7. As a consumer, with no login, open http://localhost:5173/check/TG-DEMO-CLONED (or type the tag on the home page) to see the same verdict and the product's journey. In the Product Registry, **QR labels** on a batch prints one QR code per tag. For a phone demo, start the frontend with `npm run dev -- --host`, open the app using the computer's LAN address on the same network, and generate labels from that address so the phone can reach the links.
 
+For a dataset-backed demo or a full Docker Compose run, see the [Olist replay and deployment guide](docs/olist-replay.md).
+
 ## Feature Status
 
 | Functional Requirement (from Phase 1) | Status | Where to Find It |
